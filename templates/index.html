@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, {{ session['username'] }}</h1>
+    <h2>Work Queues</h2>
+    <ul>
+        {% for queue in queues %}
+            <li><a href="{{ url_for('queue', queue_name=queue) }}">{{ queue }}</a></li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload</title>
+    <style>
+        /* Reuse styles from home.html */
+        body { margin: 0; font-family: Arial, sans-serif; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background-color: #f4f4f9; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
+        .top-bar img { width: 120px; height: auto; cursor: pointer; }
+        .top-bar .logout { font-size: 14px; font-weight: bold; color: #007bff; text-decoration: none; }
+        .top-bar .logout:hover { text-decoration: underline; }
+        .nav-bar { display: flex; align-items: center; background-color: #003366; padding: 10px 20px; }
+        .nav-bar a { color: white; font-weight: bold; text-decoration: none; margin-right: 20px; }
+        .nav-bar a:hover { text-decoration: underline; }
+        .content { padding: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <a href="{{ url_for('index') }}">
+            <img src="/static/graphics/LoginLogo.webp" alt="Logo">
+        </a>
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+    <div class="nav-bar">
+        <a href="{{ url_for('upload') }}">Upload</a>
+        <a href="{{ url_for('queue', queue_name='default') }}">Queues</a>
+    </div>
+    <div class="content">
+        <h1>Upload Work Queue</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <label for="queue_name">Queue Name:</label>
+            <input type="text" id="queue_name" name="queue_name" required><br><br>
+            <label for="file">CSV File:</label>
+            <input type="file" id="file" name="file" required><br><br>
+            <button type="submit">Upload</button>
+        </form>
+    </div>
+</body>
+</html>

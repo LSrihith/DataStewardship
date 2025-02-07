@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+        }
+        .graphic {
+            flex: 2;
+            background: url('/static/graphics/LoginScreenGraphic.webp') no-repeat center center;
+            background-size: cover;
+        }
+        .login-form {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f9;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        .login-form .logo {
+            position: absolute;
+            top: 20px;
+            width: 80%; /* Adjust as needed */
+            max-width: 200px; /* Adjust as needed */
+        }
+        .login-form h1 {
+            margin: 120px 0 20px; /* Adjust spacing to accommodate the graphic */
+            font-size: 24px;
+            color: #333;
+        }
+        .login-form form {
+            width: 100%;
+            max-width: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+        .login-form label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .login-form input {
+            margin-bottom: 15px;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .login-form button {
+            padding: 10px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .login-form button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="graphic"></div>
+    <div class="login-form">
+        <img src="/static/graphics/LoginLogo.webp" alt="Logo" class="logo">
+        <h1>Login</h1>
+        <form method="POST">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+</body>
+</html>

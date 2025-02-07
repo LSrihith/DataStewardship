@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Duplicate Records</title>
+</head>
+<body>
+    <h1>Duplicate Records in {{ queue_name }}</h1>
+    <form method="POST" action="{{ url_for('resolve_duplicates', queue_name=queue_name) }}">
+        {% for record in duplicates %}
+        <div>
+            <p>Record ID: {{ record['Record ID'] }}</p>
+            <p>Company Name: {{ record['Company Name'] }}</p>
+            <p>Email: {{ record['Email'] }}</p>
+            <!-- Allow user to select the record to keep -->
+            <input type="radio" name="survivor" value="{{ record['Record ID'] }}"> Keep this record<br>
+        </div>
+        {% endfor %}
+        <button type="submit">Resolve Duplicates</button>
+    </form>
+</body>
+</html>

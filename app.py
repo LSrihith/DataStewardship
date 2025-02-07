@@ -237,7 +237,7 @@ def update_task(queue_name, task_id):
     if action == "Completed":
         now = datetime.now()
         df.loc[task_id, 'Status'] = 'Completed'
-        df.loc[task_id, 'Completion Time'] = now.strftime('%Y-%m-%d %H:%M:%S')
+        df.loc[task_id, 'Completion Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         # Append the completed row to a CSV for history
         if not os.path.exists('completed_records'):
@@ -413,7 +413,7 @@ def admin_dashboard():
     throughput_by_analyst = {}
     if not all_completed.empty and 'Assigned To' in all_completed.columns and 'Last Updated' in all_completed.columns:
         all_completed['Last Updated'] = pd.to_datetime(all_completed['Last Updated'], errors='coerce')
-        all_completed['Time In Progress'] = all_completed['Completion Time'] - all_completed['Last Updated']
+        all_completed['Time In Progress'] = all_completed['Completion Time'] - all_completed['Created Time']
         all_completed['Hours'] = all_completed['Time In Progress'].dt.total_seconds() / 3600
 
         grouped = all_completed.groupby('Assigned To').agg({

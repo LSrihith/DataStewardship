@@ -48,6 +48,11 @@
     <div class="nav-bar">
         <a href="{{ url_for('upload') }}">Upload</a>
         <a href="{{ url_for('queues') }}">Queues</a>
+
+        <!-- Only show admin dashboard link if user is an admin -->
+        {% if session.get('role') == 'admin' %}
+           <a href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a>
+        {% endif %}
     </div>
     <div class="content">
         {% block content %}{% endblock %}

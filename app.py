@@ -244,7 +244,7 @@ def update_task(queue_name, task_id):
 
     # Ensure the main data structure is updated
     work_queues[queue_name] = df  
-
+    df.to_csv(f'{queue_name}.csv')
     return redirect(url_for('queue', queue_name=queue_name))
 
 

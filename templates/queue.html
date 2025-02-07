@@ -22,10 +22,12 @@
         </a>
         <a href="{{ url_for('logout') }}" class="logout">Logout</a>
     </div>
+
     <div class="nav-bar">
         <a href="{{ url_for('upload') }}">Upload</a>
         <a href="{{ url_for('queue', queue_name='default') }}">Queues</a>
     </div>
+
     <div class="content">
         <h1>Queue: {{ queue_name }}</h1>
         <form method="POST">
@@ -36,7 +38,9 @@
             </select>
             <button type="submit">Search</button>
         </form>
-        <a href="{{ url_for('get_next_task', queue_name=queue_name) }}">Get Next Task</a>                
+
+        <a href="{{ url_for('get_next_task', queue_name=queue_name) }}">Get Next Task</a>
+
         <ul>
             <li>Backlog: {{ metrics.backlog }}</li>
             <li>Added in Last 24 Hours: {{ metrics.added_last_24h }}</li>
@@ -44,10 +48,28 @@
             <li>Total Completed: {{ metrics.total_completed }}</li>
             <li>Average Throughput: {{ metrics.average_throughput }}</li>
         </ul>
+
         <h2>Tasks</h2>
         <ul>
             {% for task in tasks %}
-                <li><a href="{{ url_for('task', queue_name=queue_name, task_id=loop.index0) }}">{{ task }}</a></li>
+                <li>
+                    <!-- Display the task as a link to its detail page -->
+                    <a href="{{ url_for('task', queue_name=queue_name, task_id=loop.index0) }}">
+                        Task {{ loop.index0 }}: {{ task }}
+                    </a>
+
+                    <!-- Example: Show if locked_by is not None -->
+                    {% if task['locked_by'] %}
+                        <span style="color:red;">(Locked by {{ task['locked_by'] }})</span>
+                        <!-- Admin-only unlock button -->
+                        {% if session.get('role') == 'admin' %}
+                            <form action="{{ url_for('admin_unlock', queue_name=queue_name, task_id=loop.index0) }}"
+                                  method="POST" style="display:inline;">
+                                <button type="submit">Unlock</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </li>
             {% endfor %}
         </ul>
     </div>

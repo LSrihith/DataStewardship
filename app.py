@@ -189,29 +189,36 @@ def task(queue_name, task_id):
         work_queues[queue_name] = df  # Ensure the main data structure is updated
         return redirect(url_for('queue', queue_name=queue_name))
     
-    # Lock the task if not already locked or if the lock has expired
+    # Check if someone else holds a valid (unexpired) lock
     now = datetime.now()
+    lock_owner = df.at[task_id, 'lcoked_by']
     lock_timestamp = pd.to_datetime(df.at[task_id, 'lock_timestamp'], errors='coerce')
     
-    if pd.isna(df.at[task_id, 'locked_by']) or (lock_timestamp and now - lock_timestamp > timedelta(hours=1)):
+    # Convert to datetime if not NaN
+    if pd.notna(lock_timestamp):
+        lock_timestamp = pd.to_datetime(lock_timestamp, errors='coerce')
+    
+    lock_expired = False
+    if pd.notna(lock_timestamp):
+        if now - lock_timestamp > timedelta(hours=1):
+            lock_expired = True
+    
+    if pd.isna(lock_owner) or lock_owner == '' or lock_expired:
+        # Lock is free or expired -> Acquire lock
         df.at[task_id, 'locked_by'] = session['username']
         df.at[task_id, 'lock_timestamp'] = now
-        work_queues[queue_name] = df  # Update the work queue
+        work_queues[queue_name] = df
+    else:
+        # Lock is taken by someone else
+        if lock_owner != session['username']:
+            # Another user has this locked, and it's not expired
+            return f"Task {task_id} is locked by {lock_owner}. Please try again later.", 403
 
     task_data = df.iloc[task_id].to_dict()
     next_task_id = task_id + 1 if task_id + 1 < len(df) else None
     
     
     
-    # Lock the task if not already locked or if the lock has expired
-    """if pd.isna(task['locked_by']) or (now - task['lock_timestamp'] > timedelta(hours=1)):
-        df.at[task_id, 'locked_by'] = session['username']
-        df.at[task_id, 'lock_timestamp'] = now
-        work_queues[queue_name] = df  # Update the work queue """
-    
-
-    task_data = df.iloc[task_id].to_dict()
-    next_task_id = task_id + 1 if task_id + 1 < len(df) else None
     return render_template('task.html', task=task_data, queue_name=queue_name, task_id=task_id, next_task_id=next_task_id)
 
 @app.route('/queue/<queue_name>/task/<int:task_id>/update', methods=['POST'])
@@ -282,20 +289,43 @@ def resolve_duplicates(queue_name):
 
 @app.route('/admin/unlock/<queue_name>/<int:task_id>', methods=['POST'])
 def admin_unlock(queue_name, task_id):
+    # Only allow if user is an admin
     if 'role' not in session or session['role'] != 'admin':
         return "Unauthorized", 403
 
+    # Check the queue and task
+    if queue_name not in work_queues:
+        return "Queue not found", 404
+
     df = work_queues[queue_name]
-    df.at[task_id, 'locked_by'] = pd.NA
-    df.at[task_id, 'lock_timestamp'] = pd.NA
+    if task_id < 0 or task_id >= len(df):
+        return "Task not found", 404
+
+    # Manually clear the lock fields
+    df.at[task_id, 'locked_by'] = None
+    df.at[task_id, 'lock_timestamp'] = None
+
+    # Update the in-memory queue
     work_queues[queue_name] = df
+
     return redirect(url_for('queue', queue_name=queue_name))
 
 def unlock_expired_locks():
     now = datetime.now()
     for queue_name, df in work_queues.items():
-        df.loc[df['lock_timestamp'].notna() & ((pd.to_datetime(df['lock_timestamp']) + timedelta(hours=1)) < now), ['locked_by', 'lock_timestamp']] = [pd.NA, pd.NA]
-        work_queues[queue_name] = df
+        if 'lock_timestamp' not in df.columns:
+            continue
+        expired_mask = (
+            df['lock_timestamp'].notna() &
+            ((pd.to_datetime(df['lock_timestamp'], errors='coerce') + timedelta(hours=1)) < now)
+        )
+        if any(expired_mask):
+            df.loc[expired_mask, ['locked_by', 'lock_timestamp']] = [None, None]
+            work_queues[queue_name] = df
+
+@app.before_request
+def check_expired_locks():
+    unlock_expired_locks()
 
 @app.route('/queue/<queue_name>/complete_task/<int:task_id>', methods=['POST'])
 def complete_task(queue_name, task_id):

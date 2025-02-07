@@ -58,7 +58,14 @@
                         Task {{ loop.index0 }}: {{ task }}
                     </a>
 
-                    <!-- Example: Show if locked_by is not None -->
+                    <!-- Button to directly mark it as completed -->
+                    <form action="{{ url_for('complete_task', queue_name=queue_name, task_id=loop.index0) }}" 
+                          method="POST" 
+                          style="display:inline; margin-left:10px;">
+                        <button type="submit">Mark as Completed</button>
+                    </form>
+
+                    <!-- Show if locked_by is not None -->
                     {% if task['locked_by'] %}
                         <span style="color:red;">(Locked by {{ task['locked_by'] }})</span>
                         <!-- Admin-only unlock button -->

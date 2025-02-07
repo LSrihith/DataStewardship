@@ -52,16 +52,23 @@
         <h2>Tasks</h2>
         <ul>
             {% for task in tasks %}
-                <!-- Only display if Status != 'Completed' -->
-                {% if task['Status'] != 'Completed' %}
-                    <li>
-                        <!-- Link to the task detail page -->
-                        <a href="{{ url_for('task', queue_name=queue_name, task_id=loop.index0) }}">
-                            Task {{ loop.index0 }}: {{ task }}
-                        </a>
-                        <!-- If you don't want to show locking info at all, remove it -->
-                    </li>
+            <li>
+                <!-- Display the task as a link to its detail page -->
+                <a href="{{ url_for('task', queue_name=queue_name, task_id=loop.index0) }}">
+                    Task {{ loop.index0 }}: {{ task }}
+                </a>
+                <!-- Show if locked_by is not None -->
+                {% if task['locked_by'] %}
+                    <span style="color:red;">(Locked by {{ task['locked_by'] }})</span>
+                    <!-- Admin-only unlock button -->
+                    {% if session.get('role') == 'admin' %}
+                        <form action="{{ url_for('admin_unlock', queue_name=queue_name, task_id=loop.index0) }}"
+                              method="POST" style="display:inline;">
+                            <button type="submit">Unlock</button>
+                        </form>
+                    {% endif %}
                 {% endif %}
+            </li>
             {% endfor %}
         </ul>
     </div>

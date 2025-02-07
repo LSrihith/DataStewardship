@@ -233,7 +233,7 @@ def update_task(queue_name, task_id):
         return "Task not found", 404
 
     # Process the form data and directly update the DataFrame
-    action = request.form.get('updated_status')
+    action = request.form.get('status', 'open')
     # Set the status based on the action specified in the form
     if action == "Completed":
         # Copy the row

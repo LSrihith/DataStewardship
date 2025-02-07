@@ -233,10 +233,9 @@ def update_task(queue_name, task_id):
         return "Task not found", 404
 
     # Process the form data and directly update the DataFrame
-    action = request.form.get('status', 'open')
-    print(action)
+    new_status = request.form.get('status', 'open')
     # Set the status based on the action specified in the form
-    if action == "Completed":
+    if new_status == "Completed":
         # Copy the row
         completed_row = df.loc[[task_id]].copy()
         # Set the Completion Time if not already set
@@ -259,12 +258,12 @@ def update_task(queue_name, task_id):
         df.drop(task_id, inplace=True)
         df.reset_index(drop=True, inplace=True)
         work_queues[queue_name] = df
-    elif action == "Not Found":
+    elif new_status == "Not Found":
         df.loc[task_id, 'Status'] = 'Not Found'
-    elif action == "Skip":
+    elif new_status == "Skip":
         df.loc[task_id, 'Status'] = 'Open'
         df.loc[task_id, 'Assigned To'] = None  # Clear the assigned user if skipped
-    elif action == "Duplicate":
+    elif new_status == "Duplicate":
         # If handling duplicates, ensure you add logic here for how to process them
         pass
     else:

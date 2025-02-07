@@ -236,6 +236,9 @@ def update_task(queue_name, task_id):
     new_status = request.form.get('status', 'open')
     # Set the status based on the action specified in the form
     if new_status == "Completed":
+        df.loc[task_id, 'Status'] = 'Completed'
+        df.loc[task_id, 'Completion Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        df.loc[task_id, 'Assigned To'] = session.get('username')
         # Copy the row
         completed_row = df.loc[[task_id]].copy()
         # Set the Completion Time if not already set

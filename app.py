@@ -267,6 +267,11 @@ def update_task(queue_name, task_id):
     elif action == "Duplicate":
         # If handling duplicates, ensure you add logic here for how to process them
         pass
+    else:
+        # If user picks In Progress, or something else
+        df.loc[task_id, 'Status'] = action
+        df.loc[task_id, 'Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
 
     # Update other fields from the form
     for key in request.form:

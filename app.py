@@ -191,7 +191,7 @@ def task(queue_name, task_id):
     
     # Check if someone else holds a valid (unexpired) lock
     now = datetime.now()
-    lock_owner = df.at[task_id, 'lcoked_by']
+    lock_owner = df.at[task_id, 'locked_by']
     lock_timestamp = pd.to_datetime(df.at[task_id, 'lock_timestamp'], errors='coerce')
     
     # Convert to datetime if not NaN

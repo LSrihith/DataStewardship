@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+</head>
+<body>
+  <h1>Admin Dashboard</h1>
+
+  <ul>
+    <li>Total Backlog: {{ total_backlog }}</li>
+    <li>Records Added in Last 24 Hours: {{ total_added_24h }}</li>
+    <li>Records Completed in Last 24 Hours: {{ total_completed_24h }}</li>
+    <li>Average Time Spent (hours/record): {{ avg_time_spent_hours }}</li>
+  </ul>
+
+  <h2>Completion Count by Analyst</h2>
+  <table border="1">
+    <tr><th>Analyst</th><th>Records Completed</th></tr>
+    {% for analyst, count in completion_by_analyst.items() %}
+    <tr>
+      <td>{{ analyst }}</td>
+      <td>{{ count }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>Throughput (records/hour) by Analyst</h2>
+  <table border="1">
+    <tr><th>Analyst</th><th>Records/Hour</th></tr>
+    {% for analyst, tput in throughput_by_analyst.items() %}
+    <tr>
+      <td>{{ analyst }}</td>
+      <td>{{ tput }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

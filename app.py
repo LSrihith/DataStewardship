@@ -50,6 +50,7 @@ def load_csv_to_queue(file_path, queue_name):
     df['Status'] = 'Open'
     df['Assigned To'] = None
     df['Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    df['Created Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     if queue_name in work_queues:
         work_queues[queue_name] = pd.concat([work_queues[queue_name], df], ignore_index=True)
     else:
@@ -335,6 +336,138 @@ def admin_unlock(queue_name, task_id):
     work_queues[queue_name] = df
 
     return redirect(url_for('queue', queue_name=queue_name))
+
+def user_is_admin():
+    return session.get("role") == "admin"
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if not user_is_admin():
+        return "Unauthorized", 403
+
+    now = datetime.now()
+    last_24h = now - timedelta(days=1)
+
+    total_backlog = 0
+    total_added_24h = 0
+    total_completed_24h = 0
+
+    # We'll store data from all completed records across all queues
+    all_completed_records = []
+
+    # Iterate over every queue to compute metrics
+    for qname, df in work_queues.items():
+        # Ensure relevant columns are datetime
+        if 'Created Time' in df.columns:
+            df['Created Time'] = pd.to_datetime(df['Created Time'], errors='coerce')
+        if 'Completion Time' in df.columns:
+            df['Completion Time'] = pd.to_datetime(df['Completion Time'], errors='coerce')
+
+        # Backlog
+        backlog = len(df[df['Status'] == 'Open'])
+        total_backlog += backlog
+
+        # Added in last 24h
+        if 'Created Time' in df.columns:
+            added_24h_df = df[df['Created Time'] >= last_24h]
+            total_added_24h += len(added_24h_df)
+
+        # Completed in last 24h
+        if 'Completion Time' in df.columns:
+            completed_24h_df = df[
+                (df['Status'] == 'Completed') &
+                (df['Completion Time'] >= last_24h)
+            ]
+            total_completed_24h += len(completed_24h_df)
+
+        # Gather all completed for further analysis
+        completed_df = df[df['Status'] == 'Completed'].copy()
+        if 'Created Time' in completed_df.columns and 'Completion Time' in completed_df.columns:
+            completed_df['Time Spent'] = completed_df['Completion Time'] - completed_df['Created Time']
+        completed_df['Queue Name'] = qname
+        all_completed_records.append(completed_df)
+
+    # Combine all completed data
+    if all_completed_records:
+        all_completed = pd.concat(all_completed_records, ignore_index=True)
+    else:
+        all_completed = pd.DataFrame()
+
+    # Average Time Spent
+    if not all_completed.empty and 'Time Spent' in all_completed.columns:
+        avg_time_spent = all_completed['Time Spent'].mean()
+        avg_time_spent_hours = avg_time_spent.total_seconds() / 3600 if pd.notnull(avg_time_spent) else 0
+    else:
+        avg_time_spent_hours = 0
+
+    # Completion count by analyst
+    if not all_completed.empty and 'Assigned To' in all_completed.columns:
+        completion_by_analyst_series = all_completed.groupby('Assigned To')['Record ID'].count()
+        completion_by_analyst = completion_by_analyst_series.to_dict()
+    else:
+        completion_by_analyst = {}
+
+    # Throughput (records/hour) by analyst
+    # We'll measure from Last Updated to Completion Time if you prefer
+    # or from Created Time to Completion Time. Adjust as needed.
+    throughput_by_analyst = {}
+    if not all_completed.empty and 'Assigned To' in all_completed.columns and 'Last Updated' in all_completed.columns:
+        all_completed['Last Updated'] = pd.to_datetime(all_completed['Last Updated'], errors='coerce')
+        all_completed['Time In Progress'] = all_completed['Completion Time'] - all_completed['Last Updated']
+        all_completed['Hours'] = all_completed['Time In Progress'].dt.total_seconds() / 3600
+
+        grouped = all_completed.groupby('Assigned To').agg({
+            'Record ID': 'count',
+            'Hours': 'sum'
+        })
+        grouped['Throughput (records/hour)'] = grouped['Record ID'] / grouped['Hours']
+        grouped['Throughput (records/hour)'].fillna(0, inplace=True)
+        throughput_by_analyst = grouped['Throughput (records/hour)'].to_dict()
+
+    # Put them in a context for the template
+    context = {
+        'total_backlog': total_backlog,
+        'total_added_24h': total_added_24h,
+        'total_completed_24h': total_completed_24h,
+        'avg_time_spent_hours': avg_time_spent_hours,
+        'completion_by_analyst': completion_by_analyst,
+        'throughput_by_analyst': throughput_by_analyst
+    }
+
+    return render_template('admin_dashboard.html', **context)
+
+def create_queue():
+    if not user_is_admin():
+        return "Unauthorized", 403
+
+    if request.method == 'POST':
+        new_queue_name = request.form['queue_name']
+        if new_queue_name in work_queues:
+            return "Queue already exists", 400
+        # Create an empty DataFrame with some columns
+        work_queues[new_queue_name] = pd.DataFrame(
+            columns=["Record ID", "Status", "Assigned To", "Last Updated", "Created Time", "Completion Time", "locked_by", "lock_timestamp"]
+        )
+        return redirect(url_for('index'))
+    
+    return '''
+    <form method="POST">
+      <label>Queue Name:</label>
+      <input type="text" name="queue_name" />
+      <button type="submit">Create</button>
+    </form>
+    '''
+
+@app.route('/admin/delete_queue/<queue_name>', methods=['POST'])
+def delete_queue(queue_name):
+    if not user_is_admin():
+        return "Unauthorized", 403
+
+    if queue_name in work_queues:
+        del work_queues[queue_name]
+        return redirect(url_for('index'))
+    else:
+        return "Queue not found", 404
 
 def unlock_expired_locks():
     now = datetime.now()

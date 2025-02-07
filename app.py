@@ -339,14 +339,24 @@ def complete_task(queue_name, task_id):
     df.loc[task_id, 'Completion Time'] = now.strftime('%Y-%m-%d %H:%M:%S')
 
     # Save completed task information to a CSV file
-    completed_file_path = os.path.join('completed_records', f'{queue_name}_completed_records.csv')
     if not os.path.exists('completed_records'):
         os.makedirs('completed_records')
-    completed_tasks = df[df['Status'] == 'Completed']
-    completed_tasks.to_csv(completed_file_path, mode='a', header=not os.path.exists(completed_file_path), index=False)
+    completed_file_path = os.path.join('completed_records', f'{queue_name}_completed_records.csv')
+    
+    # Extract the single completed row
+    completed_row = df.loc[[task_id]]
+    
+    # Append it to CSV
+    completed_row.to_csv(
+        completed_file_path,
+        mode='a',
+        header=not os.path.exists(completed_file_path),
+        index=False
+    )
 
-    # Remove completed tasks from the active queue
-    df = df[df['Status'] != 'Completed']
+    # Remove the completed record from the active queue
+    df.drop(task_id, inplace=True)
+    df.reset_index(drop=True, inplace=True)
     work_queues[queue_name] = df
 
     return redirect(url_for('queue', queue_name=queue_name))

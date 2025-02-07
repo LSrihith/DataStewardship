@@ -48,7 +48,6 @@ def load_csv_to_queue(file_path, queue_name):
     # Initialize missing columns for locking mechanism
     df['locked_by'] = None
     df['lock_timestamp'] = None
-    df['Status'] = 'Open'
     df['Assigned To'] = None
     df['Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     df['Created Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

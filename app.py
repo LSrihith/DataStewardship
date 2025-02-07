@@ -234,6 +234,7 @@ def update_task(queue_name, task_id):
 
     # Process the form data and directly update the DataFrame
     action = request.form.get('status', 'open')
+    print(action)
     # Set the status based on the action specified in the form
     if action == "Completed":
         # Copy the row

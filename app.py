@@ -17,6 +17,7 @@ users = {
 }
 work_queues = {}
 task_locks = {}
+completed_records = {} 
 
 # Define five standard spreadsheet formats
 STANDARD_FORMATS = [
@@ -235,32 +236,28 @@ def update_task(queue_name, task_id):
     action = request.form.get('status')
     # Set the status based on the action specified in the form
     if action == "Completed":
-        now = datetime.now()
-        df.loc[task_id, 'Status'] = 'Completed'
-        df.loc[task_id, 'Completion Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Copy the row
+        completed_row = df.loc[[task_id]].copy()
 
-        # Append the completed row to a CSV for history
-        if not os.path.exists('completed_records'):
-            os.makedirs('completed_records')
-        completed_file_path = os.path.join('completed_records', f'{queue_name}_completed_records.csv')
+        # Set "Status" and "Completion Time"
+        completed_row.loc[task_id, 'Status'] = 'Completed'
+        completed_row.loc[task_id, 'Completion Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Extract just this one row
-        completed_task = df.loc[[task_id]].copy()
-        completed_task.to_csv(
-            completed_file_path,
-            mode='a',
-            header=not os.path.exists(completed_file_path),
-            index=False
-        )
+        # Append this row to completed_records
+        if queue_name not in completed_records:
+            # If the queue doesn’t exist yet, just store the single-row DataFrame
+            completed_records[queue_name] = completed_row
+        else:
+            completed_records[queue_name] = pd.concat(
+                [completed_records[queue_name], completed_row],
+                ignore_index=True
+            )
 
-        # Remove the task from the active queue
+        # Remove it from the active queue
         df.drop(task_id, inplace=True)
         df.reset_index(drop=True, inplace=True)
-
-        # Update the in-memory DataFrame
         work_queues[queue_name] = df
 
-        # Finally, redirect to the queue page (the completed task is now gone)
         return redirect(url_for('queue', queue_name=queue_name))
     elif action == "Not Found":
         df.loc[task_id, 'Status'] = 'Not Found'
@@ -342,77 +339,68 @@ def user_is_admin():
 
 @app.route('/admin/dashboard')
 def admin_dashboard():
-    if not user_is_admin():
+    if session.get('role') != 'admin':
         return "Unauthorized", 403
 
     now = datetime.now()
     last_24h = now - timedelta(days=1)
 
+    # For backlog and newly added, we still look at `work_queues`.
     total_backlog = 0
     total_added_24h = 0
-    total_completed_24h = 0
 
-    # We'll store data from all completed records across all queues
-    all_completed_records = []
-
-    # Iterate over every queue to compute metrics
     for qname, df in work_queues.items():
-        # Ensure relevant columns are datetime
+        # Convert times if needed
         if 'Created Time' in df.columns:
             df['Created Time'] = pd.to_datetime(df['Created Time'], errors='coerce')
-        if 'Completion Time' in df.columns:
-            df['Completion Time'] = pd.to_datetime(df['Completion Time'], errors='coerce')
-
-        # Backlog
+        
+        # 1) Backlog => tasks that are 'Open', or 'In Progress' if you want
         backlog = len(df[df['Status'] == 'Open'])
         total_backlog += backlog
 
-        # Added in last 24h
+        # 2) Added in the last 24 hours
+        added_24h = 0
         if 'Created Time' in df.columns:
             added_24h_df = df[df['Created Time'] >= last_24h]
-            total_added_24h += len(added_24h_df)
+            added_24h = len(added_24h_df)
+        total_added_24h += added_24h
+
+    # For completed tasks, read from `completed_records`
+    total_completed_24h = 0
+    all_completed_dfs = []
+
+    for qname, cdf in completed_records.items():
+        # Convert Completion Time if needed
+        if 'Completion Time' in cdf.columns:
+            cdf['Completion Time'] = pd.to_datetime(cdf['Completion Time'], errors='coerce')
+        if 'Created Time' in cdf.columns:
+            cdf['Created Time'] = pd.to_datetime(cdf['Created Time'], errors='coerce')
 
         # Completed in last 24h
-        if 'Completion Time' in df.columns:
-            completed_24h_df = df[
-                (df['Status'] == 'Completed') &
-                (df['Completion Time'] >= last_24h)
-            ]
-            total_completed_24h += len(completed_24h_df)
+        completed_24h_df = cdf[cdf['Completion Time'] >= last_24h]
+        total_completed_24h += len(completed_24h_df)
 
-        # Gather all completed for further analysis
-        completed_df = df[df['Status'] == 'Completed'].copy()
-        if 'Created Time' in completed_df.columns and 'Completion Time' in completed_df.columns:
-            completed_df['Time Spent'] = completed_df['Completion Time'] - completed_df['Created Time']
-        completed_df['Queue Name'] = qname
-        all_completed_records.append(completed_df)
+        # Gather for throughput/time metrics
+        all_completed_dfs.append(cdf)
 
-    # Combine all completed data
-    if all_completed_records:
-        all_completed = pd.concat(all_completed_records, ignore_index=True)
+    # Combine all completed records across all queues
+    if all_completed_dfs:
+        all_completed = pd.concat(all_completed_dfs, ignore_index=True)
     else:
         all_completed = pd.DataFrame()
 
-    # Average Time Spent
-    if not all_completed.empty and 'Time Spent' in all_completed.columns:
-        avg_time_spent = all_completed['Time Spent'].mean()
-        avg_time_spent_hours = avg_time_spent.total_seconds() / 3600 if pd.notnull(avg_time_spent) else 0
-    else:
-        avg_time_spent_hours = 0
+    # Compute average time spent, throughput, etc.
+    avg_time_spent_hours = 0
+    if not all_completed.empty and 'Created Time' in all_completed.columns and 'Completion Time' in all_completed.columns:
+        all_completed['Time Spent'] = all_completed['Completion Time'] - all_completed['Created Time']
+        mean_ts = all_completed['Time Spent'].mean()
+        if pd.notnull(mean_ts):
+            avg_time_spent_hours = mean_ts.total_seconds() / 3600
 
-    # Completion count by analyst
-    if not all_completed.empty and 'Assigned To' in all_completed.columns:
-        completion_by_analyst_series = all_completed.groupby('Assigned To')['Record ID'].count()
-        completion_by_analyst = completion_by_analyst_series.to_dict()
-    else:
-        completion_by_analyst = {}
-
-    # Throughput (records/hour) by analyst
-    # We'll measure from Last Updated to Completion Time if you prefer
-    # or from Created Time to Completion Time. Adjust as needed.
+    # Throughput by analyst
     throughput_by_analyst = {}
-    if not all_completed.empty and 'Assigned To' in all_completed.columns and 'Last Updated' in all_completed.columns:
-        all_completed['Last Updated'] = pd.to_datetime(all_completed['Last Updated'], errors='coerce')
+    if not all_completed.empty and 'Assigned To' in all_completed.columns:
+        # For a simple approach, measure Time In Progress as (Completion Time - Created Time)
         all_completed['Time In Progress'] = all_completed['Completion Time'] - all_completed['Created Time']
         all_completed['Hours'] = all_completed['Time In Progress'].dt.total_seconds() / 3600
 
@@ -420,17 +408,15 @@ def admin_dashboard():
             'Record ID': 'count',
             'Hours': 'sum'
         })
-        grouped['Throughput (records/hour)'] = grouped['Record ID'] / grouped['Hours']
-        grouped['Throughput (records/hour)'].fillna(0, inplace=True)
-        throughput_by_analyst = grouped['Throughput (records/hour)'].to_dict()
+        grouped['Throughput'] = grouped['Record ID'] / grouped['Hours']
+        grouped['Throughput'].fillna(0, inplace=True)
+        throughput_by_analyst = grouped['Throughput'].to_dict()
 
-    # Put them in a context for the template
     context = {
         'total_backlog': total_backlog,
         'total_added_24h': total_added_24h,
         'total_completed_24h': total_completed_24h,
         'avg_time_spent_hours': avg_time_spent_hours,
-        'completion_by_analyst': completion_by_analyst,
         'throughput_by_analyst': throughput_by_analyst
     }
 

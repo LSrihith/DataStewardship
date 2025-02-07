@@ -234,7 +234,33 @@ def update_task(queue_name, task_id):
     action = request.form.get('status')
     # Set the status based on the action specified in the form
     if action == "Completed":
+        now = datetime.now()
         df.loc[task_id, 'Status'] = 'Completed'
+        df.loc[task_id, 'Completion Time'] = now.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Append the completed row to a CSV for history
+        if not os.path.exists('completed_records'):
+            os.makedirs('completed_records')
+        completed_file_path = os.path.join('completed_records', f'{queue_name}_completed_records.csv')
+
+        # Extract just this one row
+        completed_task = df.loc[[task_id]].copy()
+        completed_task.to_csv(
+            completed_file_path,
+            mode='a',
+            header=not os.path.exists(completed_file_path),
+            index=False
+        )
+
+        # Remove the task from the active queue
+        df.drop(task_id, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+
+        # Update the in-memory DataFrame
+        work_queues[queue_name] = df
+
+        # Finally, redirect to the queue page (the completed task is now gone)
+        return redirect(url_for('queue', queue_name=queue_name))
     elif action == "Not Found":
         df.loc[task_id, 'Status'] = 'Not Found'
     elif action == "Skip":
@@ -327,39 +353,7 @@ def unlock_expired_locks():
 def check_expired_locks():
     unlock_expired_locks()
 
-@app.route('/queue/<queue_name>/complete_task/<int:task_id>', methods=['POST'])
-def complete_task(queue_name, task_id):
-    df = work_queues.get(queue_name)
-    if df is None or task_id >= len(df):
-        return "Queue or task not found", 404
 
-    # Mark the record as completed and set the completion time
-    now = datetime.now()
-    df.loc[task_id, 'Status'] = 'Completed'
-    df.loc[task_id, 'Completion Time'] = now.strftime('%Y-%m-%d %H:%M:%S')
-
-    # Save completed task information to a CSV file
-    if not os.path.exists('completed_records'):
-        os.makedirs('completed_records')
-    completed_file_path = os.path.join('completed_records', f'{queue_name}_completed_records.csv')
-    
-    # Extract the single completed row
-    completed_row = df.loc[[task_id]]
-    
-    # Append it to CSV
-    completed_row.to_csv(
-        completed_file_path,
-        mode='a',
-        header=not os.path.exists(completed_file_path),
-        index=False
-    )
-
-    # Remove the completed record from the active queue
-    df.drop(task_id, inplace=True)
-    df.reset_index(drop=True, inplace=True)
-    work_queues[queue_name] = df
-
-    return redirect(url_for('queue', queue_name=queue_name))
 
 
 if __name__ == '__main__':

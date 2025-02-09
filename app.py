@@ -45,17 +45,38 @@ def load_csv_to_queue(file_path, queue_name):
     df = pd.read_csv(file_path)
     if not validate_format(df):
         return False, 'Invalid file format. File does not match any predefined standard formats.'
-    # Initialize missing columns for locking mechanism
-    df['locked_by'] = None
-    df['lock_timestamp'] = None
-    df['Status'] = 'Open'
-    df['Assigned To'] = None
-    df['Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    df['Created Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if "Unnamed: 0" in df.columns:
+        df.drop(columns=["Unnamed: 0"], inplace=True)
+    
+    # If the CSV has "Status" column, drop rows that are already "Completed"
+    if 'Status' in df.columns:
+        df = df[df['Status'] != 'Completed'].copy()
+    
+    # Initialize missing columns
+    if 'locked_by' not in df.columns:
+        df['locked_by'] = None
+    if 'lock_timestamp' not in df.columns:
+        df['lock_timestamp'] = None
+    if 'Status' not in df.columns:
+        df['Status'] = 'Open'
+    else:
+        # For any row with blank status, default to 'Open'
+        df['Status'] = df['Status'].fillna('Open')
+    
+    if 'Assigned To' not in df.columns:
+        df['Assigned To'] = None
+    if 'Last Updated' not in df.columns:
+        df['Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if 'Created Time' not in df.columns:
+        df['Created Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # Combine with in-memory queue
     if queue_name in work_queues:
-        work_queues[queue_name] = pd.concat([work_queues[queue_name], df], ignore_index=True)
+        combined_df = pd.concat([work_queues[queue_name], df], ignore_index=True)
+        work_queues[queue_name] = combined_df
     else:
         work_queues[queue_name] = df
+    
     return True, 'File uploaded successfully'
 
 def get_dashboard_metrics(queue_name):
@@ -233,57 +254,51 @@ def update_task(queue_name, task_id):
         return "Task not found", 404
 
     # Process the form data and directly update the DataFrame
-    new_status = request.form.get('status', 'open')
+    action = request.form.get('status', 'open')
     # Set the status based on the action specified in the form
-    if new_status == "Completed":
+    if action == "Completed":
+        now = datetime.now()
         df.loc[task_id, 'Status'] = 'Completed'
-        df.loc[task_id, 'Completion Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        df.loc[task_id, 'Assigned To'] = session.get('username')
-        # Copy the row
-        completed_row = df.loc[[task_id]].copy()
-        # Set the Completion Time if not already set
-        completed_row['Status'] = 'Completed'
-        completed_row['Completion Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        # If assigned user is needed
-        completed_row['Assigned To'] = session.get('username')
-
-        # Initialize completed_records[queue_name] if needed
-        if queue_name not in completed_records:
-            completed_records[queue_name] = completed_row
-        else:
-            completed_records[queue_name] = pd.concat([
-                completed_records[queue_name],
-                completed_row
-            ], ignore_index=True)
-
-        # Remove the row from active queue
+        df.loc[task_id, 'Completion Time'] = now.strftime('%Y-%m-%d %H:%M:%S')
+        # Append the completed row to a CSV for history
+        if not os.path.exists('completed_records'):
+            os.makedirs('completed_records')
+        completed_file_path = os.path.join('completed_records', f'{queue_name}_completed_records.csv')
+        # Extract just this one row
+        completed_task = df.loc[[task_id]].copy()
+        completed_task.to_csv(
+            completed_file_path,
+            mode='a',
+            header=not os.path.exists(completed_file_path),
+            index=False
+        )
+        # Remove the task from the active queue
         df.drop(task_id, inplace=True)
         df.reset_index(drop=True, inplace=True)
+        # Update the in-memory DataFrame
         work_queues[queue_name] = df
-    elif new_status == "Not Found":
+        # Finally, redirect to the queue page (the completed task is now gone)
+        return redirect(url_for('queue', queue_name=queue_name))
+    
+    elif action == "Not Found":
         df.loc[task_id, 'Status'] = 'Not Found'
-    elif new_status == "Skip":
+    elif action == "Skip":
         df.loc[task_id, 'Status'] = 'Open'
-        df.loc[task_id, 'Assigned To'] = None  # Clear the assigned user if skipped
-    elif new_status == "Duplicate":
-        # If handling duplicates, ensure you add logic here for how to process them
+        df.loc[task_id, 'Assigned To'] = None
+    elif action == "Duplicate":
+        # logic for duplicates
         pass
     else:
-        # If user picks In Progress, or something else
-        df.loc[task_id, 'Status'] = new_status
+        df.loc[task_id, 'Status'] = action
         df.loc[task_id, 'Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-
-    # Update other fields from the form
+    # Update other form fields
     for key in request.form:
-        if key in df.columns and key != 'status':  # Skip 'status' as it's already handled
+        if key in df.columns and key != 'status':
             df.loc[task_id, key] = request.form[key]
 
-    # Ensure the main data structure is updated
-    work_queues[queue_name] = df  
-    
-    df.to_csv(f'{queue_name}.csv')
+    work_queues[queue_name] = df
+    df.to_csv(f'{queue_name}.csv', index=False)  # If you want to persist active queue as well
     return redirect(url_for('queue', queue_name=queue_name))
 
 
@@ -353,43 +368,59 @@ def admin_dashboard():
     now = datetime.now()
     last_24h = now - timedelta(hours=24)
 
-    # Backlog from active queues
+    # Calculate backlog from active queues
     total_backlog = 0
     for qname, df in work_queues.items():
+        # Count tasks still marked "Open"
         total_backlog += len(df[df['Status'] == 'Open'])
 
-    # Completed stats from completed_records
+    # Gather all completed records from CSV files in /completed_records
+    completed_dir = 'completed_records'
     all_completed_list = []
-    for qname, cdf in completed_records.items():
-        # Convert your time columns to datetime so we can filter
-        if 'Completion Time' in cdf.columns:
-            cdf['Completion Time'] = pd.to_datetime(cdf['Completion Time'], errors='coerce')
-        if 'Created Time' in cdf.columns:
-            cdf['Created Time'] = pd.to_datetime(cdf['Created Time'], errors='coerce')
 
-        # Mark which queue it came from (optional)
-        cdf['Queue Name'] = qname
-        all_completed_list.append(cdf)
+    if os.path.exists(completed_dir):
+        # For each CSV file in /completed_records, read and combine
+        for filename in os.listdir(completed_dir):
+            if filename.endswith('.csv'):
+                file_path = os.path.join(completed_dir, filename)
+                
+                # Read the CSV into a DataFrame
+                cdf = pd.read_csv(file_path, dtype=str)  # dtype=str helps avoid surprises
+                
+                # Convert relevant time columns to datetime if they exist
+                if 'Completion Time' in cdf.columns:
+                    cdf['Completion Time'] = pd.to_datetime(cdf['Completion Time'], errors='coerce')
+                if 'Created Time' in cdf.columns:
+                    cdf['Created Time'] = pd.to_datetime(cdf['Created Time'], errors='coerce')
+                if 'Last Updated' in cdf.columns:
+                    cdf['Last Updated'] = pd.to_datetime(cdf['Last Updated'], errors='coerce')
+                
+                # Optionally, parse queue name from the filename or store in the CSV
+                # cdf['Queue Name'] = filename.replace('_completed_records.csv','')
+                
+                all_completed_list.append(cdf)
 
     # Combine all completed data
     if all_completed_list:
         all_completed = pd.concat(all_completed_list, ignore_index=True)
     else:
+        # If no completed CSV files or they're empty
         all_completed = pd.DataFrame()
 
+    # Compute your metrics
     total_completed_24h = 0
     avg_time_spent_hours = 0
     completion_by_analyst = {}
     throughput_by_analyst = {}
 
-    if not all_completed.empty:
-        # Completed in Last 24 hours
+    if not all_completed.empty and 'Completion Time' in all_completed.columns:
+        # Completed in last 24 hours
         completed_24h_df = all_completed[all_completed['Completion Time'] >= last_24h]
         total_completed_24h = len(completed_24h_df)
 
-        # Average Time Spent
-        # If you store Created Time, compute difference
+        # Average Time Spent (needs both Created Time and Completion Time)
         if 'Created Time' in all_completed.columns:
+            # Subtract Created from Completion
             all_completed['Time Spent'] = all_completed['Completion Time'] - all_completed['Created Time']
             avg_time_spent = all_completed['Time Spent'].mean()
             if pd.notnull(avg_time_spent):
@@ -400,23 +431,27 @@ def admin_dashboard():
             completion_count_series = all_completed.groupby('Assigned To')['Status'].count()
             completion_by_analyst = completion_count_series.to_dict()
 
-        # Throughput by analyst
+        # Throughput by analyst (requires Last Updated and Completion Time)
         if 'Assigned To' in all_completed.columns and 'Last Updated' in all_completed.columns:
-            all_completed['Last Updated'] = pd.to_datetime(all_completed['Last Updated'], errors='coerce')
+            # Calculate how long it was "In Progress"
             all_completed['Time In Progress'] = all_completed['Completion Time'] - all_completed['Last Updated']
             all_completed['Hours'] = all_completed['Time In Progress'].dt.total_seconds() / 3600
+
             grp = all_completed.groupby('Assigned To').agg({'Status': 'count', 'Hours': 'sum'})
             grp['Throughput (records/hour)'] = grp['Status'] / grp['Hours']
             grp['Throughput (records/hour)'].fillna(0, inplace=True)
             throughput_by_analyst = grp['Throughput (records/hour)'].to_dict()
 
-    # Render a template, passing these computed values
-    return render_template('admin_dashboard.html',
-                           total_backlog=total_backlog,
-                           total_completed_24h=total_completed_24h,
-                           avg_time_spent_hours=avg_time_spent_hours,
-                           completion_by_analyst=completion_by_analyst,
-                           throughput_by_analyst=throughput_by_analyst)
+    # Render the dashboard template with these values
+    return render_template(
+        'admin_dashboard.html',
+        total_backlog=total_backlog,
+        total_completed_24h=total_completed_24h,
+        avg_time_spent_hours=avg_time_spent_hours,
+        completion_by_analyst=completion_by_analyst,
+        throughput_by_analyst=throughput_by_analyst
+    )
+
 
 def create_queue():
     if not user_is_admin():

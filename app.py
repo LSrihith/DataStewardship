@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, session, redirect, url_for, render_te
 import pandas as pd
 import os
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 app = Flask(__name__, static_folder='static')
 app.secret_key = 'b4181cbfc55ef8a45297f5d5b1104921ebc79ceedfbfcdf3a6cd742fa1c8519e'
@@ -18,6 +19,10 @@ users = {
 work_queues = {}
 task_locks = {}
 completed_records = {} 
+
+# A dictionary: queue_permissions[queue_name][username] = True/False
+# If user is admin, they can always access. Otherwise, check this dict.
+queue_permissions = defaultdict(lambda: defaultdict(bool))
 
 # Define five standard spreadsheet formats
 STANDARD_FORMATS = [
@@ -39,6 +44,15 @@ def validate_format(df):
         if format_set.issubset(uploaded_columns):
             return True
     return False
+
+def user_is_admin():
+    return session.get("role") == "admin"
+
+def can_user_access_queue(username, queue_name):
+    # Admins have universal access; otherwise check queue_permissions.
+    if user_is_admin():
+        return True
+    return queue_permissions[queue_name].get(username, False)
 
 # Utility functions
 def load_csv_to_queue(file_path, queue_name):
@@ -144,6 +158,10 @@ def queues():
 def queue(queue_name):
     if queue_name not in work_queues:
         return "Queue not found", 404
+    
+    # Check if the current user has access to this queue
+    if not can_user_access_queue(session.get('username'), queue_name):
+        return "Unauthorized", 403
     
     df = work_queues[queue_name]
     if request.method == 'POST':
@@ -352,9 +370,6 @@ def admin_unlock(queue_name, task_id):
 
     return redirect(url_for('queue', queue_name=queue_name))
 
-def user_is_admin():
-    return session.get("role") == "admin"
-
 @app.route('/admin/dashboard')
 def admin_dashboard():
     # Restrict access to admins
@@ -497,6 +512,37 @@ def unlock_expired_locks():
         if any(expired_mask):
             df.loc[expired_mask, ['locked_by', 'lock_timestamp']] = [None, None]
             work_queues[queue_name] = df
+
+@app.route('/admin/assign_permissions/<queue_name>', methods=['GET','POST'])
+def assign_permissions(queue_name):
+    # Allows an admin to assign which users can access a specific queue.
+    if not user_is_admin():
+        return "Unauthorized", 403
+
+    # Make sure queue exists
+    if queue_name not in work_queues:
+        return "Queue not found", 404
+
+    if request.method == 'POST':
+        # For each user in your 'users' dict, check if the form had it "on"
+        for username in users:
+            can_access = request.form.get(username)  # 'on' if checked, else None
+            if can_access == 'on':
+                queue_permissions[queue_name][username] = True
+            else:
+                queue_permissions[queue_name][username] = False
+        return redirect(url_for('queue', queue_name=queue_name))
+
+    # GET: show a form with checkboxes for each user
+    html = f"<h1>Assign Permissions for queue: {queue_name}</h1>"
+    html += "<form method='POST'>"
+    for username in users:
+        has_access = queue_permissions[queue_name].get(username, False)
+        checked = "checked" if has_access else ""
+        html += f"<label>{username}</label> "
+        html += f"<input type='checkbox' name='{username}' {checked}><br>"
+    html += "<button type='submit'>Save</button></form>"
+    return html
 
 @app.before_request
 def check_expired_locks():

@@ -46,6 +46,9 @@
                 <li>
                     <a href="{{ url_for('queue', queue_name=queue) }}">{{ queue }}</a>
                     {% if session.get('role') == 'admin' %}
+                        <!-- Link to assign permissions for this individual queue -->
+                        <a class="permissions-link" href="{{ url_for('assign_permissions', queue_name=queue) }}">Assign Permissions</a>
+                        <!-- Delete button for the individual queue -->
                         <form class="delete-form"
                               method="POST"
                               action="{{ url_for('delete_queue', queue_name=queue) }}"

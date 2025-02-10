@@ -464,27 +464,56 @@ def admin_dashboard():
     )
 
 
+@app.route('/admin/create_queue', methods=['GET', 'POST'])
 def create_queue():
     if not user_is_admin():
         return "Unauthorized", 403
 
     if request.method == 'POST':
-        new_queue_name = request.form['queue_name']
+        # Retrieve the fields from the form
+        cd_number = request.form.get('cd_number')
+        company_name = request.form.get('company_name')
+        country_name = request.form.get('country_name')
+        duns = request.form.get('duns')  # Optional field
+
+        # Validate required fields
+        if not (cd_number and company_name and country_name):
+            return "CD Number, Company Name, and Country Name are required.", 400
+
+        # Auto-generate a new queue name (e.g., "Queue 1", "Queue 2", etc.)
+        new_queue_name = f"Queue {len(work_queues) + 1}"
         if new_queue_name in work_queues:
-            return "Queue already exists", 400
-        # Create an empty DataFrame with some columns
+            new_queue_name += f"_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+        # Create an empty DataFrame for tasks in the new queue with expected columns.
         work_queues[new_queue_name] = pd.DataFrame(
-            columns=["Record ID", "Status", "Assigned To", "Last Updated", "Created Time", "Completion Time", "locked_by", "lock_timestamp"]
+            columns=["Record ID", "Status", "Assigned To", "Last Updated",
+                     "Created Time", "Completion Time", "locked_by", "lock_timestamp"]
         )
+
+        # Create a metadata dictionary for this new queue.
+        metadata = {
+            "Queue Name": new_queue_name,
+            "CD Number": cd_number,
+            "Company Name": company_name,
+            "Country Name": country_name,
+            "DUNS": duns or ""  # If DUNS is not provided, store an empty string.
+        }
+
+        # Save metadata to a single CSV file that stores all queue metadata.
+        metadata_file = "queue_metadata.csv"
+        if os.path.exists(metadata_file):
+            # Read existing metadata
+            meta_df = pd.read_csv(metadata_file, dtype=str)
+            # Append the new metadata row
+            meta_df = meta_df.append(metadata, ignore_index=True)
+        else:
+            meta_df = pd.DataFrame([metadata])
+        meta_df.to_csv(metadata_file, index=False)
+
         return redirect(url_for('index'))
-    
-    return '''
-    <form method="POST">
-      <label>Queue Name:</label>
-      <input type="text" name="queue_name" />
-      <button type="submit">Create</button>
-    </form>
-    '''
+
+    return render_template('create_queue.html')
 
 @app.route('/admin/delete_queue/<queue_name>', methods=['POST'])
 def delete_queue(queue_name):

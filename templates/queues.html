@@ -12,6 +12,20 @@
         .nav-bar a { color: white; font-weight: bold; text-decoration: none; margin-right: 20px; }
         .nav-bar a:hover { text-decoration: underline; }
         .content { padding: 20px; }
+        ul { list-style-type: none; margin: 0; padding: 0; }
+        li { margin-bottom: 10px; }
+        .delete-form { display: inline; margin-left: 10px; }
+        .delete-button {
+            background-color: #ff4f4f;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .delete-button:hover {
+            background-color: #ff3333;
+        }
     </style>
 </head>
 <body>
@@ -29,7 +43,17 @@
         <h1>Available Queues</h1>
         <ul>
             {% for queue in queues %}
-                <li><a href="{{ url_for('queue', queue_name=queue) }}">{{ queue }}</a></li>
+                <li>
+                    <a href="{{ url_for('queue', queue_name=queue) }}">{{ queue }}</a>
+                    {% if session.get('role') == 'admin' %}
+                        <form class="delete-form"
+                              method="POST"
+                              action="{{ url_for('delete_queue', queue_name=queue) }}"
+                              onsubmit="return confirm('Are you sure you want to delete queue: {{ queue }}?');">
+                            <button type="submit" class="delete-button">Delete</button>
+                        </form>
+                    {% endif %}
+                </li>
             {% endfor %}
         </ul>
     </div>

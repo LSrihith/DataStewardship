@@ -45,8 +45,6 @@ def load_csv_to_queue(file_path, queue_name):
     df = pd.read_csv(file_path)
     if not validate_format(df):
         return False, 'Invalid file format. File does not match any predefined standard formats.'
-    if "Unnamed: 0" in df.columns:
-        df.drop(columns=["Unnamed: 0"], inplace=True)
     
     # If the CSV has "Status" column, drop rows that are already "Completed"
     if 'Status' in df.columns:
@@ -157,9 +155,9 @@ def queue(queue_name):
                 df = df[df[search_type].str.contains(search_query, case=False, na=False)]
             else:
                 return f"Error: Column {search_type} does not exist in the DataFrame.", 400
-
+    df_display = df[df['Status'] != 'Completed'].copy()
     metrics = get_dashboard_metrics(queue_name)
-    return render_template('queue.html', queue_name=queue_name, metrics=metrics, tasks=df.to_dict(orient='records'))
+    return render_template('queue.html', queue_name=queue_name, metrics=metrics, tasks=df_display.to_dict(orient='records'))
 
 @app.route('/queue/<queue_name>/get_next')
 def get_next_task(queue_name):
@@ -272,9 +270,7 @@ def update_task(queue_name, task_id):
             header=not os.path.exists(completed_file_path),
             index=False
         )
-        # Remove the task from the active queue
-        df.drop(task_id, inplace=True)
-        df.reset_index(drop=True, inplace=True)
+        df.to_csv(f'{queue_name}.csv', index=False)
         # Update the in-memory DataFrame
         work_queues[queue_name] = df
         # Finally, redirect to the queue page (the completed task is now gone)
@@ -297,8 +293,8 @@ def update_task(queue_name, task_id):
         if key in df.columns and key != 'status':
             df.loc[task_id, key] = request.form[key]
 
-    work_queues[queue_name] = df
     df.to_csv(f'{queue_name}.csv', index=False)  # If you want to persist active queue as well
+    work_queues[queue_name] = df
     return redirect(url_for('queue', queue_name=queue_name))
 
 
@@ -482,6 +478,9 @@ def delete_queue(queue_name):
 
     if queue_name in work_queues:
         del work_queues[queue_name]
+        completed_file = os.path.join('completed_records', f'{queue_name}_completed_records.csv')
+        if os.path.exists(completed_file):
+            os.remove(completed_file)
         return redirect(url_for('index'))
     else:
         return "Queue not found", 404
@@ -509,4 +508,3 @@ def check_expired_locks():
 if __name__ == '__main__':
     os.makedirs('uploads', exist_ok=True)
     app.run(debug=True)
-

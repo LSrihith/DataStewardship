@@ -255,7 +255,6 @@ def task(queue_name, task_id):
         df.loc[task_id, 'lock_timestamp'] = None
 
         work_queues[queue_name] = df  # Ensure the main data structure is updated
-        df.to_csv(f'{queue_name}.csv', index=False)
         df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'), index=False)
         return redirect(url_for('queue', queue_name=queue_name))
     
@@ -302,7 +301,25 @@ def update_task(queue_name, task_id):
 
     # Process the form data and directly update the DataFrame
     action = request.form.get('status', 'open')
-    # Set the status based on the action specified in the form
+
+    # Set the status based on the action specified in the form    
+    if action == "Not Found":
+        df.loc[task_id, 'Status'] = 'Not Found'
+    elif action == "Skip":
+        df.loc[task_id, 'Status'] = 'Open'
+        df.loc[task_id, 'Assigned To'] = None
+    elif action == "Duplicate":
+        # logic for duplicates
+        pass
+    else:
+        df.loc[task_id, 'Status'] = action
+        df.loc[task_id, 'Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # Update other form fields
+    for key in request.form:
+        if key in df.columns and key != 'status':
+            df.loc[task_id, key] = request.form[key]
+    
     if action == "Completed":
         now = datetime.now()
         df.loc[task_id, 'Status'] = 'Completed'
@@ -319,32 +336,12 @@ def update_task(queue_name, task_id):
             header=not os.path.exists(completed_file_path),
             index=False
         )
-        df.to_csv(f'{queue_name}.csv', index=False)
-        df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'), index=False)
-        # Update the in-memory DataFrame
-        work_queues[queue_name] = df
-        # Finally, redirect to the queue page (the completed task is now gone)
-        return redirect(url_for('queue', queue_name=queue_name))
-    
-    elif action == "Not Found":
-        df.loc[task_id, 'Status'] = 'Not Found'
-    elif action == "Skip":
-        df.loc[task_id, 'Status'] = 'Open'
-        df.loc[task_id, 'Assigned To'] = None
-    elif action == "Duplicate":
-        # logic for duplicates
-        pass
-    else:
-        df.loc[task_id, 'Status'] = action
-        df.loc[task_id, 'Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    # Update other form fields
-    for key in request.form:
-        if key in df.columns and key != 'status':
-            df.loc[task_id, key] = request.form[key]
 
     df.to_csv(f'{queue_name}.csv', index=False)  # If you want to persist active queue as well
+    df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'), index=False)
+    # Update the in-memory DataFrame
     work_queues[queue_name] = df
+    # Finally, redirect to the queue page (the completed task is now gone)
     return redirect(url_for('queue', queue_name=queue_name))
 
 

@@ -7,8 +7,10 @@ from collections import defaultdict
 app = Flask(__name__, static_folder='static')
 app.secret_key = 'b4181cbfc55ef8a45297f5d5b1104921ebc79ceedfbfcdf3a6cd742fa1c8519e'
 UPLOAD_FOLDER = 'uploads'
+ACTIVE_QUEUES_FOLDER = 'active_queues'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'csv', 'xlsx'}
+os.makedirs(ACTIVE_QUEUES_FOLDER, exist_ok=True)
 
 # Initialize in-memory data structures
 users = {
@@ -89,7 +91,34 @@ def load_csv_to_queue(file_path, queue_name):
     else:
         work_queues[queue_name] = df
     
+    # Save the active queue to ACTIVE_QUEUES_FOLDER
+    file_out = os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv')
+    work_queues[queue_name].to_csv(file_out, index=False)
+    
     return True, 'File uploaded successfully'
+
+def load_all_queues():
+    """
+    Loads active queue CSV files from the ACTIVE_QUEUES_FOLDER,
+    filtering out any rows with Status == 'Completed' or whose Record ID
+    is already present in the corresponding completed_records CSV file.
+    This ensures that after a server restart, any tasks that have been
+    completed (even if not flagged in the active CSV) do not appear.
+    """
+    for filename in os.listdir(ACTIVE_QUEUES_FOLDER):
+        if filename.endswith('.csv'):
+            queue_name = filename.rsplit('.', 1)[0]
+            file_path = os.path.join(ACTIVE_QUEUES_FOLDER, filename)
+            try:
+                # Load the CSV file into a DataFrame.
+                df = pd.read_csv(file_path, dtype=str)
+                # If the "Status" column exists, filter out completed rows.
+                if 'Status' in df.columns:
+                    df = df[df['Status'] != 'Completed'].copy()
+                work_queues[queue_name] = df
+                print(f"Loaded queue: {queue_name} with {len(df)} active records")
+            except Exception as e:
+                print(f"Error loading {filename}: {e}")
 
 def get_dashboard_metrics(queue_name):
     if queue_name not in work_queues:
@@ -226,6 +255,8 @@ def task(queue_name, task_id):
         df.loc[task_id, 'lock_timestamp'] = None
 
         work_queues[queue_name] = df  # Ensure the main data structure is updated
+        df.to_csv(f'{queue_name}.csv', index=False)
+        df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'), index=False)
         return redirect(url_for('queue', queue_name=queue_name))
     
     # Check if someone else holds a valid (unexpired) lock
@@ -289,6 +320,7 @@ def update_task(queue_name, task_id):
             index=False
         )
         df.to_csv(f'{queue_name}.csv', index=False)
+        df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'), index=False)
         # Update the in-memory DataFrame
         work_queues[queue_name] = df
         # Finally, redirect to the queue page (the completed task is now gone)
@@ -577,9 +609,7 @@ def assign_permissions(queue_name):
 def check_expired_locks():
     unlock_expired_locks()
 
-
-
-
 if __name__ == '__main__':
     os.makedirs('uploads', exist_ok=True)
+    load_all_queues()
     app.run(debug=True)

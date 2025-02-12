@@ -54,6 +54,12 @@
            <a href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a>
         {% endif %}
         <a href="{{ url_for('create_queue') }}">Create Queue</a>
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('manage_users') }}">Manage Users</a>
+        {% endif %}
+        {% if session.get('role') == 'user' %}
+        <a href="{{ url_for('update_password') }}">Change Password</a>
+        {% endif %}
     </div>
     <div class="content">
         {% block content %}{% endblock %}

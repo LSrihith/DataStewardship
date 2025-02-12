@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 from collections import defaultdict
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder='static')
 app.secret_key = 'b4181cbfc55ef8a45297f5d5b1104921ebc79ceedfbfcdf3a6cd742fa1c8519e'
@@ -12,12 +13,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'csv', 'xlsx'}
 os.makedirs(ACTIVE_QUEUES_FOLDER, exist_ok=True)
 
-# Initialize in-memory data structures
-users = {
-    "admin": {"password": "admin123", "role": "admin"},
-    "user1": {"password": "user123", "role": "user"},
-    "tjrourk": {"password": "passw0rd", "role": "admin"}
-}
+USER_FILE = 'users.csv'
 work_queues = {}
 task_locks = {}
 completed_records = {} 
@@ -37,20 +33,125 @@ STANDARD_FORMATS = [
     {"CD Number","Company Name","Country Name","DUNS"}
 ]
 
+# Load the existing users.csv
+if os.path.exists(USER_FILE):
+    df = pd.DataFrame(columns=["username", "password", "role"])
+    df = pd.read_csv(USER_FILE, dtype=str)
 
+    # There are already 3 users in the csv file. This function hashs the password. 
+    """for index, row in df.iterrows():
+        password = row["password"]
+        if not password.startswith("pbkdf2:sha256"):  # Ensure it's not already hashed
+            df.at[index, "password"] = generate_password_hash(password)"""
+
+    # Save the updated CSV with hashed passwords
+    df.to_csv(USER_FILE, index=False)
+
+# Load users from CSV
+def load_users():
+    # Load users from CSV into a dictionary.
+    if os.path.exists(USER_FILE):
+        df = pd.read_csv(USER_FILE, dtype=str)
+        if "username" not in df.columns or "password" not in df.columns or "role" not in df.columns:
+            raise ValueError("CSV file is missing required columns: username, password, role")
+        return df.set_index("username").T.to_dict()
+    return {}
+
+# Save users back to CSV
+def save_users(users):
+    # Save users dictionary back to CSV.
+    df = pd.DataFrame.from_dict(users, orient='index')  # Convert dictionary to DataFrame
+    df.reset_index(inplace=True)  # Convert index (username) back to a column
+    df.rename(columns={"index": "username"}, inplace=True)  # Ensure column name is correct
+    df.to_csv(USER_FILE, index=False)  # Save without an index column
+
+# Verify password against the hashed password
+def verify_password(hashed_password, provided_password):
+    # Check if the provided password matches the stored hash.
+    return check_password_hash(hashed_password, provided_password)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    users = load_users() # load users from csv
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        if username in users and users[username]['password'] == password:
+
+        if username in users and verify_password(users[username]['password'], password):
             session['username'] = username
             session['role'] = users[username]['role']
             return redirect(url_for('index'))
         else:
             return "Invalid credentials", 401
     return render_template('login.html')
+
+@app.route('/admin/manage_users', methods=['GET', 'POST'])
+def manage_users():
+    # Admin page to manage users (create users and update passwords).
+    if session.get('role') != 'admin':
+        return "Unauthorized", 403
+
+    users = load_users()
+    message = ""
+
+    if request.method == 'POST':
+        action = request.form['action']
+        username = request.form['username']
+
+        if action == "create":
+            if username in users:
+                message = "User already exists!"
+            else:
+                password = request.form['password']
+                role = request.form['role']
+                users[username] = {
+                    "username": username,
+                    "password": generate_password_hash(password),
+                    "role": role
+                }
+                save_users(users)
+                message = "User created successfully!"
+
+        elif action == "update_password":
+            if username not in users:
+                message = "User not found!"
+            else:
+                current_password = request.form['current_password']
+                new_password = request.form['new_password']
+
+                # Verify the current password
+                if verify_password(users[username]['password'], current_password):
+                    users[username]['password'] = generate_password_hash(new_password)
+                    save_users(users)
+                    message = "Password updated successfully!"
+                else:
+                    message = "Incorrect current password!"
+
+    return render_template('manage_users.html', users=users, message=message)
+
+@app.route('/update_password', methods=['GET', 'POST'])
+def update_password():
+    # Allow logged-in users to change their password.
+    if 'username' not in session:
+        return redirect(url_for('login'))  # Redirect if not logged in
+
+    users = load_users()
+    username = session['username']  # Get logged-in user
+    message = ""
+
+    if request.method == 'POST':
+        current_password = request.form['current_password']
+        new_password = request.form['new_password']
+
+        # Verify the current password
+        if username in users and verify_password(users[username]['password'], current_password):
+            users[username]['password'] = generate_password_hash(new_password)  # Update password
+            save_users(users)  # Save changes
+            message = "Password updated successfully!"
+        else:
+            message = "Incorrect current password!"
+
+    return render_template('update_password.html', message=message)
 
 @app.route('/logout')
 def logout():
@@ -543,6 +644,7 @@ def unlock_expired_locks():
 @app.route('/admin/assign_permissions/<queue_name>', methods=['GET','POST'])
 def assign_permissions(queue_name):
     # Allows an admin to assign which users can access a specific queue.
+    users = load_users()
     if not user_is_admin():
         return "Unauthorized", 403
 

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Users</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h2 { color: #003366; }
+        .container { width: 50%; margin: auto; }
+        form { margin-bottom: 20px; }
+        input, select, button { margin: 5px 0; padding: 8px; width: 100%; }
+        .message { color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Manage Users</h2>
+        <p class="message">{{ message }}</p>
+        
+        <h3>Create New User</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="create">
+            <label>Username:</label>
+            <input type="text" name="username" required>
+            <label>Password:</label>
+            <input type="password" name="password" required>
+            <label>Role:</label>
+            <select name="role">
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+            </select>
+            <button type="submit">Create User</button>
+        </form>
+
+        <h3>Update Password</h3>
+        <form method="POST">
+            <label>Username:</label>
+            <input type="text" name="username" required>
+            <label>Current Password:</label>
+            <input type="password" name="current_password" required>
+            <label>New Password:</label>
+            <input type="password" name="new_password" required>
+            <input type="hidden" name="action" value="update_password">
+            <button type="submit">Update Password</button>
+        </form>
+
+        <a href="{{ url_for('index') }}">Back to home</a>
+    </div>
+</body>
+</html>

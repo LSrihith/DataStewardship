@@ -59,7 +59,6 @@
                     <a href="{{ url_for('task', queue_name=queue_name, task_id=loop.index0) }}">
                         Task {{ loop.index0 }}: {{ task }}
                     </a>
-                    <!-- If you don't want to show locking info at all, remove it -->
                 </li>
             {% endif %}
         {% endfor %}

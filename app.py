@@ -26,6 +26,8 @@ completed_records = {}
 # If user is admin, they can always access. Otherwise, check this dict.
 queue_permissions = defaultdict(lambda: defaultdict(bool))
 
+
+
 # Define five standard spreadsheet formats
 STANDARD_FORMATS = [
     {"Record ID", "Company Name", "Data Field", "Value"},
@@ -34,6 +36,26 @@ STANDARD_FORMATS = [
     {"A_ID","B_ID","A_NAME","B_NAME","A_MAILADDRESS1","B_MAILADDRESS1"},
     {"CD Number","Company Name","Country Name","DUNS"}
 ]
+
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username in users and users[username]['password'] == password:
+            session['username'] = username
+            session['role'] = users[username]['role']
+            return redirect(url_for('index'))
+        else:
+            return "Invalid credentials", 401
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 # Function to check allowed file types
 def allowed_file(filename):
@@ -140,24 +162,6 @@ def index():
         return redirect(url_for('login'))
     #print("Rendering home.html")
     return render_template('home.html', queues=work_queues.keys())
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        if username in users and users[username]['password'] == password:
-            session['username'] = username
-            session['role'] = users[username]['role']
-            return redirect(url_for('index'))
-        else:
-            return "Invalid credentials", 401
-    return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
@@ -308,9 +312,6 @@ def update_task(queue_name, task_id):
     elif action == "Skip":
         df.loc[task_id, 'Status'] = 'Open'
         df.loc[task_id, 'Assigned To'] = None
-    elif action == "Duplicate":
-        # logic for duplicates
-        pass
     else:
         df.loc[task_id, 'Status'] = action
         df.loc[task_id, 'Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -342,38 +343,6 @@ def update_task(queue_name, task_id):
     # Update the in-memory DataFrame
     work_queues[queue_name] = df
     # Finally, redirect to the queue page (the completed task is now gone)
-    return redirect(url_for('queue', queue_name=queue_name))
-
-
-def find_duplicates(df):
-    # Assuming 'Company Name' and 'Email' are the criteria for finding duplicates
-    duplicates = df.duplicated(subset=['Company Name', 'Email'], keep=False)
-    return df[duplicates]
-
-@app.route('/queue/<queue_name>/duplicates')
-def show_duplicates(queue_name):
-    if queue_name not in work_queues:
-        return "Queue not found", 404
-
-    df = work_queues[queue_name]
-    duplicate_df = find_duplicates(df)
-    if duplicate_df.empty:
-        return "No duplicates found", 404
-
-    # Convert DataFrame to a suitable format for HTML rendering
-    duplicates = duplicate_df.to_dict(orient='records')
-    return render_template('duplicates.html', queue_name=queue_name, duplicates=duplicates)
-
-@app.route('/queue/<queue_name>/resolve_duplicates', methods=['POST'])
-def resolve_duplicates(queue_name):
-    survivor_id = request.form['survivor']
-    df = work_queues[queue_name]
-
-    # Mark all as duplicates except the survivor
-    df['Status'] = df.apply(lambda x: 'Duplicate' if str(x['Record ID']) != survivor_id else 'Active', axis=1)
-
-    # Update the DataFrame in your queue
-    work_queues[queue_name] = df
     return redirect(url_for('queue', queue_name=queue_name))
 
 @app.route('/admin/unlock/<queue_name>/<int:task_id>', methods=['POST'])

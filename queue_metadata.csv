@@ -1,2 +1,2 @@
-Queue Name,CD Number,Company Name,Country Name,DUNS
-Queue 1,12345678,ABCDE,USA,2903847
+CD Number,Company Name,Country Name,DUNS
+12345678,ABCDE,USA,2903847

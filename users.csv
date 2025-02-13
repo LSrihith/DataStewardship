@@ -1,0 +1,5 @@
+username,password,role,username.1
+admin,pbkdf2:sha256:600000$pfTdJjjidqfBKCz4$15c504a6e615fdbddc67858572d30bcb27816c8023f2f03e21958fb957e6849f,admin,
+user1,pbkdf2:sha256:600000$EuUY8Dk5M0YFHoxP$9fc76261052e9c7aebafb7c7564cce8b1698a767fa15a2a22556d51f40939055,user,
+tjrourk,pbkdf2:sha256:600000$XHrm8pKFOMHaxAXa$a533f10b3cc372f18b583a2385bcb2eb394050da6c56266d8b0070285dcbb036,admin,
+user2,pbkdf2:sha256:600000$rADVcYEt4kTbwQbu$9a918210e7530fb8b1ce979a454373482d738ff1705bc252394731274790fc66,user,user2

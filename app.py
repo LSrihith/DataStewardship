@@ -24,11 +24,8 @@ queue_permissions = defaultdict(lambda: defaultdict(bool))
 
 
 
-# Define five standard spreadsheet formats
+# Define standard spreadsheet formats
 STANDARD_FORMATS = [
-    {"Record ID", "Company Name", "Data Field", "Value"},
-    {"ID", "Name", "Category", "Amount"},
-    {"Unique ID", "Client", "Type", "Details"},
     {"A_ID","B_ID","A_NAME","B_NAME","A_MAILADDRESS1","B_MAILADDRESS1"},
     {"CD Number","Company Name","Country Name","DUNS"}
 ]
@@ -181,44 +178,68 @@ def can_user_access_queue(username, queue_name):
 
 # Utility functions
 def load_csv_to_queue(file_path, queue_name):
-    df = pd.read_csv(file_path)
-    if not validate_format(df):
-        return False, 'Invalid file format. File does not match any predefined standard formats.'
-    
-    # If the CSV has "Status" column, drop rows that are already "Completed"
-    if 'Status' in df.columns:
-        df = df[df['Status'] != 'Completed'].copy()
-    
-    # Initialize missing columns
-    if 'locked_by' not in df.columns:
-        df['locked_by'] = None
-    if 'lock_timestamp' not in df.columns:
-        df['lock_timestamp'] = None
-    if 'Status' not in df.columns:
-        df['Status'] = 'Open'
-    else:
-        # For any row with blank status, default to 'Open'
-        df['Status'] = df['Status'].fillna('Open')
-    
-    if 'Assigned To' not in df.columns:
-        df['Assigned To'] = None
-    if 'Last Updated' not in df.columns:
-        df['Last Updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    if 'Created Time' not in df.columns:
-        df['Created Time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # Loads new CSV data into a queue while maintaining its specific format, avoiding duplicates, and handling missing columns.
 
-    # Combine with in-memory queue
-    if queue_name in work_queues:
-        combined_df = pd.concat([work_queues[queue_name], df], ignore_index=True)
-        work_queues[queue_name] = combined_df
+    if not os.path.exists(file_path):
+        return False, "File not found."
+
+    # Load new data
+    new_data = pd.read_csv(file_path, dtype=str)
+
+    # Validate format: Ensure the new data matches one of the STANDARD_FORMATS
+    if not any(format_set.issubset(set(new_data.columns)) for format_set in STANDARD_FORMATS):
+        return False, "Invalid file format. File does not match any predefined standard formats."
+
+    # Load existing queue data if it exists
+    queue_file = os.path.join(ACTIVE_QUEUES_FOLDER, f"{queue_name}.csv")
+    
+    if os.path.exists(queue_file):
+        existing_data = pd.read_csv(queue_file, dtype=str)
+
+        # Identify shared columns between existing data and new data
+        common_columns = list(set(existing_data.columns) & set(new_data.columns))
+        if not common_columns:
+            return False, f"No matching columns found between existing queue ({queue_name}) and new data."
+
+        # Add missing columns to new_data (fill with empty values)
+        for col in existing_data.columns:
+            if col not in new_data.columns:
+                new_data[col] = None
+
+        # Add missing columns to existing_data
+        for col in new_data.columns:
+            if col not in existing_data.columns:
+                existing_data[col] = None
+
+        # Remove duplicates based on shared identifying columns
+        combined_data = pd.concat([existing_data, new_data], ignore_index=True)
+        combined_data.drop_duplicates(subset=common_columns, keep="first", inplace=True)
+
     else:
-        work_queues[queue_name] = df
+        # If queue doesn't exist, use the new data as the queue
+        combined_data = new_data
+
+    # Ensure required columns exist in all queues
+    required_columns = {"Status", "locked_by", "lock_timestamp", "Assigned To", "Last Updated", "Created Time"}
+    for col in required_columns:
+        if col not in combined_data.columns:
+            combined_data[col] = None
+
+    # Ensure default values
+    if "Status" in combined_data.columns:
+        combined_data["Status"] = combined_data["Status"].fillna("Open")
+    if "Last Updated" in combined_data.columns:
+        combined_data["Last Updated"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if "Created Time" in combined_data.columns:
+        combined_data["Created Time"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # Save updated queue
+    combined_data.to_csv(queue_file, index=False)
     
-    # Save the active queue to ACTIVE_QUEUES_FOLDER
-    file_out = os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv')
-    work_queues[queue_name].to_csv(file_out, index=False)
-    
-    return True, 'File uploaded successfully'
+    # Update in-memory queue
+    work_queues[queue_name] = combined_data
+
+    return True, f"File successfully uploaded and appended to queue: {queue_name}."
 
 def load_all_queues():
     """
@@ -592,7 +613,6 @@ def create_queue():
 
         # Create a metadata dictionary for this new queue.
         metadata = {
-            "Queue Name": new_queue_name,
             "CD Number": cd_number,
             "Company Name": company_name,
             "Country Name": country_name,

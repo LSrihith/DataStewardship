@@ -3,31 +3,110 @@
 <head>
     <title>Create New Queue</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        label { font-weight: bold; display: block; margin-top: 10px; }
-        input[type="text"] { padding: 8px; width: 300px; margin-top: 5px; }
-        button { padding: 8px 16px; margin-top: 20px; background-color: #007bff; color: #fff; border: none; cursor: pointer; border-radius: 4px; }
-        button:hover { background-color: #0056b3; }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        
+        .container {
+            background: white;
+            padding: 25px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #003366;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 15px;
+            text-align: left;
+            color: #333;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
+
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        
+        .back-link {
+            display: block;
+            margin-top: 15px;
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+
+        .back-link:hover {
+            color: #0056b3;
+        }
     </style>
 </head>
 <body>
-    <h1>Create New Queue</h1>
-    <form method="POST" action="{{ url_for('create_queue') }}">
-        <label for="cd_number">CD Number:</label>
-        <input type="text" id="cd_number" name="cd_number" required>
+    <div class="container">
+        <h1>Create New Queue</h1>
+        <form method="POST" action="{{ url_for('create_queue') }}">
+            <label for="cd_number">CD Number:</label>
+            <input type="text" id="cd_number" name="cd_number" required>
 
-        <label for="company_name">Company Name:</label>
-        <input type="text" id="company_name" name="company_name" required>
+            <label for="company_name">Company Name:</label>
+            <input type="text" id="company_name" name="company_name" required>
 
-        <label for="country_name">Country Name:</label>
-        <input type="text" id="country_name" name="country_name" required>
+            <label for="country_name">Country Name:</label>
+            <input type="text" id="country_name" name="country_name" required>
 
-        <label for="duns">DUNS (optional):</label>
-        <input type="text" id="duns" name="duns">
+            <label for="duns">DUNS:</label>
+            <input type="text" id="duns" name="duns">
 
-        <button type="submit">Create Queue</button>
-    </form>
-    <br>
-    <a href="{{ url_for('index') }}">Return to Home</a>
+            <button type="submit">Create Queue</button>
+        </form>
+        <a href="{{ url_for('index') }}" class="back-link">Return to Home</a>
+    </div>
 </body>
 </html>

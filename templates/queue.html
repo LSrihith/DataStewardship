@@ -3,16 +3,200 @@
 <head>
     <title>Queue</title>
     <style>
-        /* Reuse styles from home.html */
-        body { margin: 0; font-family: Arial, sans-serif; }
-        .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background-color: #f4f4f9; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
-        .top-bar img { width: 120px; height: auto; cursor: pointer; }
-        .top-bar .logout { font-size: 14px; font-weight: bold; color: #007bff; text-decoration: none; }
-        .top-bar .logout:hover { text-decoration: underline; }
-        .nav-bar { display: flex; align-items: center; background-color: #003366; padding: 10px 20px; }
-        .nav-bar a { color: white; font-weight: bold; text-decoration: none; margin-right: 20px; }
-        .nav-bar a:hover { text-decoration: underline; }
-        .content { padding: 20px; }
+        
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background-color: #f4f4f9;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-bar img {
+            width: 120px;
+            height: auto;
+            cursor: pointer;
+        }
+
+        .top-bar .logout {
+            font-size: 14px;
+            font-weight: bold;
+            color: #007bff;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        .top-bar .logout:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            background-color: #003366;
+            padding: 12px 20px;
+        }
+
+        .nav-bar a {
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        .nav-bar a:hover {
+            background-color: #0056b3;
+        }
+
+        
+        .content {
+            padding: 30px;
+            max-width: 900px;
+            margin: auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        h1 {
+            color: #003366;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        
+        form {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"], select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        
+        .get-task-btn {
+            display: block;
+            text-align: center;
+            margin: 15px auto;
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            font-size: 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .get-task-btn:hover {
+            background-color: #218838;
+        }
+
+        
+        ul.metrics {
+            list-style-type: none;
+            padding: 0;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        ul.metrics li {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            flex: 1 1 45%;
+            margin: 5px;
+        }
+
+        
+        .task-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+
+        .task-list li {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            transition: 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .task-list li a {
+            text-decoration: none;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .task-list li:hover {
+            background: #d6e9ff;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .status-open {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .status-inprogress {
+            background: #17a2b8;
+            color: #fff;
+        }
+
+        .status-completed {
+            background: #28a745;
+            color: #fff;
+        }
+
     </style>
 </head>
 <body>
@@ -39,26 +223,32 @@
             <button type="submit">Search</button>
         </form>
 
-        <a href="{{ url_for('get_next_task', queue_name=queue_name) }}">Get Next Task</a>
+        <a href="{{ url_for('get_next_task', queue_name=queue_name) }}" class="get-task-btn">Get Next Task</a>
 
-        <ul>
-            <li>Backlog: {{ metrics.backlog }}</li>
-            <li>Added in Last 24 Hours: {{ metrics.added_last_24h }}</li>
-            <li>Completed in Last 24 Hours: {{ metrics.completed_last_24h }}</li>
-            <li>Total Completed: {{ metrics.total_completed }}</li>
-            <li>Average Throughput: {{ metrics.average_throughput }}</li>
+        <ul class="metrics">
+            <li><strong>Backlog:</strong> {{ metrics.backlog }}</li>
+            <li><strong>Added in Last 24 Hours:</strong> {{ metrics.added_last_24h }}</li>
+            <li><strong>Completed in Last 24 Hours:</strong> {{ metrics.completed_last_24h }}</li>
+            <li><strong>Total Completed:</strong> {{ metrics.total_completed }}</li>
+            <li><strong>Average Throughput:</strong>Average Throughput: {{ metrics.average_throughput }}</li>
         </ul>
 
         <h2>Tasks</h2>
-        <ul>
+        <ul class="task-list">
             {% for task in tasks %}
             <!-- Only display if Status != 'Completed' -->
             {% if task['Status'] != 'Completed' %}
                 <li>
                     <!-- Link to the task detail page -->
                     <a href="{{ url_for('task', queue_name=queue_name, task_id=loop.index0) }}">
-                        Task {{ loop.index0 }}: {{ task }}
+                        Task {{ loop.index0 }}: {{ task["Company Name"] if "Company Name" in task else "Unknown" }}
                     </a>
+                    <span class="status-badge 
+                        {% if task['Status'] == 'Open' %} status-open 
+                        {% elif task['Status'] == 'In Progress' %} status-inprogress 
+                        {% else %} status-completed {% endif %}">
+                        {{ task['Status'] }}
+                    </span>
                 </li>
             {% endif %}
         {% endfor %}

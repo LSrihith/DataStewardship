@@ -3,16 +3,121 @@
 <head>
     <title>Upload</title>
     <style>
-        /* Reuse styles from home.html */
-        body { margin: 0; font-family: Arial, sans-serif; }
-        .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background-color: #f4f4f9; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
-        .top-bar img { width: 120px; height: auto; cursor: pointer; }
-        .top-bar .logout { font-size: 14px; font-weight: bold; color: #007bff; text-decoration: none; }
-        .top-bar .logout:hover { text-decoration: underline; }
-        .nav-bar { display: flex; align-items: center; background-color: #003366; padding: 10px 20px; }
-        .nav-bar a { color: white; font-weight: bold; text-decoration: none; margin-right: 20px; }
-        .nav-bar a:hover { text-decoration: underline; }
-        .content { padding: 20px; text-align: center; }
+        
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background-color: #f4f4f9;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-bar img {
+            width: 120px;
+            height: auto;
+            cursor: pointer;
+        }
+
+        .top-bar .logout {
+            font-size: 14px;
+            font-weight: bold;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .top-bar .logout:hover {
+            text-decoration: underline;
+        }
+
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            background-color: #003366;
+            padding: 10px 20px;
+        }
+
+        .nav-bar a {
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            margin-right: 20px;
+        }
+
+        .nav-bar a:hover {
+            text-decoration: underline;
+        }
+
+        .content {
+            padding: 40px;
+            text-align: center;
+            background: white;
+            width: 50%;
+            margin: 50px auto;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #003366;
+        }
+
+        form {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+            text-align: left;
+            width: 100%;
+        }
+
+        input[type="text"],
+        input[type="file"] {
+            padding: 10px;
+            width: 100%;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -22,17 +127,21 @@
         </a>
         <a href="{{ url_for('logout') }}" class="logout">Logout</a>
     </div>
+    
     <div class="nav-bar">
         <a href="{{ url_for('upload') }}">Upload</a>
         <a href="{{ url_for('queue', queue_name='default') }}">Queues</a>
     </div>
+
     <div class="content">
         <h1>Upload Work Queue</h1>
         <form method="POST" enctype="multipart/form-data">
             <label for="queue_name">Queue Name:</label>
-            <input type="text" id="queue_name" name="queue_name" required><br><br>
+            <input type="text" id="queue_name" name="queue_name" required>
+
             <label for="file">CSV File:</label>
-            <input type="file" id="file" name="file" required><br><br>
+            <input type="file" id="file" name="file" required>
+
             <button type="submit">Upload</button>
         </form>
     </div>

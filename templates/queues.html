@@ -3,18 +3,132 @@
 <head>
     <title>Queues</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; }
-        .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background-color: #f4f4f9; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
-        .top-bar img { width: 120px; height: auto; cursor: pointer; }
-        .top-bar .logout { font-size: 14px; font-weight: bold; color: #007bff; text-decoration: none; cursor: pointer; }
-        .top-bar .logout:hover { text-decoration: underline; }
-        .nav-bar { display: flex; align-items: center; background-color: #003366; padding: 10px 20px; }
-        .nav-bar a { color: white; font-weight: bold; text-decoration: none; margin-right: 20px; }
-        .nav-bar a:hover { text-decoration: underline; }
-        .content { padding: 20px; }
-        ul { list-style-type: none; margin: 0; padding: 0; }
-        li { margin-bottom: 10px; }
-        .delete-form { display: inline; margin-left: 10px; }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f8f9fa;
+        }
+
+        
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background-color: #f4f4f9;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-bar img {
+            width: 120px;
+            height: auto;
+            cursor: pointer;
+        }
+
+        .top-bar .logout {
+            font-size: 14px;
+            font-weight: bold;
+            color: #007bff;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .top-bar .logout:hover {
+            text-decoration: underline;
+            color: #0056b3;
+        }
+
+        
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            background-color: #003366;
+            padding: 10px 20px;
+        }
+
+        .nav-bar a {
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            margin-right: 20px;
+            transition: color 0.3s;
+        }
+
+        .nav-bar a:hover {
+            text-decoration: underline;
+            color: #ddd;
+        }
+
+        
+        .content {
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        h1 {
+            color: #003366;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        
+        ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        li {
+            background: #fff;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        li a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+
+        li a:hover {
+            color: #0056b3;
+        }
+
+        
+        .permissions-link {
+            font-size: 12px;
+            padding: 4px 8px;
+            margin-left: 10px;
+            background-color: #ffc107;
+            color: black;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .permissions-link:hover {
+            background-color: #e0a800;
+        }
+
+        
+        .delete-form {
+            display: inline;
+            margin-left: 10px;
+        }
+
         .delete-button {
             background-color: #ff4f4f;
             color: #fff;
@@ -22,9 +136,11 @@
             padding: 6px 12px;
             cursor: pointer;
             border-radius: 4px;
+            transition: background 0.3s;
         }
+
         .delete-button:hover {
-            background-color: #ff3333;
+            background-color: #cc0000;
         }
     </style>
 </head>

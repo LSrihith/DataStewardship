@@ -3,19 +3,164 @@
 <head>
     <title>Task</title>
     <style>
-        /* Reuse styles from home.html */
-        body { margin: 0; font-family: Arial, sans-serif; }
-        .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background-color: #f4f4f9; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
-        .top-bar img { width: 120px; height: auto; cursor: pointer; }
-        .top-bar .logout { font-size: 14px; font-weight: bold; color: #007bff; text-decoration: none; }
-        .top-bar .logout:hover { text-decoration: underline; }
-        .nav-bar { display: flex; align-items: center; background-color: #003366; padding: 10px 20px; }
-        .nav-bar a { color: white; font-weight: bold; text-decoration: none; margin-right: 20px; }
-        .nav-bar a:hover { text-decoration: underline; }
-        .content { padding: 20px; }
-        .missing { background-color: #ffcccc; } /* Highlight missing fields */
-        input, select { width: 100%; padding: 8px; margin-top: 5px; }
-        button { padding: 10px 20px; margin-top: 10px; }
+        
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background-color: #f4f4f9;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-bar img {
+            width: 120px;
+            height: auto;
+            cursor: pointer;
+        }
+
+        .top-bar .logout {
+            font-size: 14px;
+            font-weight: bold;
+            color: #007bff;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        .top-bar .logout:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            background-color: #003366;
+            padding: 12px 20px;
+        }
+
+        .nav-bar a {
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        .nav-bar a:hover {
+            background-color: #0056b3;
+        }
+
+        
+        .content {
+            padding: 30px;
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        h1 {
+            color: #003366;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .missing {
+            background-color: #ffcccc !important;
+            border: 2px solid #ff4d4d;
+        }
+
+        
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        button, .button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .button {
+            background-color: #28a745;
+            color: white;
+            transition: 0.3s;
+        }
+
+        .button:hover {
+            background-color: #218838;
+        }
+
+        .find-next {
+            display: block;
+            margin-top: 20px;
+            text-align: center;
+            padding: 10px;
+            background-color: #ffc107;
+            color: #333;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .find-next:hover {
+            background-color: #e0a800;
+        }
     </style>
 </head>
 <body>
@@ -33,25 +178,30 @@
         <h1>Task in {{ queue_name }}</h1>
         <form method="POST" action="{{ url_for('update_task', queue_name=queue_name, task_id=task_id) }}">
             {% for key, value in task.items() %}
-            <div>
+            <div class="form-group">
                 <label for="{{ key }}">{{ key }}:</label>
                 <input type="text" id="{{ key }}" name="{{ key }}" value="{{ value }}" class="{{ 'missing' if value is none or value is string and value.strip() == '' }}">
             </div>
             {% endfor %}
-            <label for="status">Update Status:</label>
-            <select id="status" name="status">
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Not Found">Not Found</option>
-                <option value="Skip">Skip</option>
-            </select>
-            <button type="submit">Submit</button>
-            {% if next_task_id is not none %}
-            <a href="{{ url_for('task', queue_name=queue_name, task_id=next_task_id) }}" class="button">Next Task</a>
-            {% else %}
-            <a href="{{ url_for('get_next_task', queue_name=queue_name) }}">Find Next Task</a>
-            {% endif %}
+            <div class="form-group">
+                <label for="status">Update Status:</label>
+                <select id="status" name="status">
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Not Found">Not Found</option>
+                    <option value="Skip">Skip</option>
+                </select>
+            </div>
+
+            <div class="button-container">
+                <button type="submit">Submit</button>
+                {% if next_task_id is not none %}
+                <a href="{{ url_for('task', queue_name=queue_name, task_id=next_task_id) }}" class="button">Next Task</a>
+                {% else %}
+                <a href="{{ url_for('get_next_task', queue_name=queue_name) }}">Find Next Task</a>
+                {% endif %}
+            </div>
         </form>
     </div>
 </body>

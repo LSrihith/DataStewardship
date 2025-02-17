@@ -3,7 +3,6 @@
 <head>
     <title>Queue</title>
     <style>
-        
         body {
             margin: 0;
             font-family: Arial, sans-serif;
@@ -11,7 +10,6 @@
             color: #333;
         }
 
-        
         .top-bar {
             display: flex;
             align-items: center;
@@ -42,7 +40,6 @@
             color: #fff;
         }
 
-        
         .nav-bar {
             display: flex;
             align-items: center;
@@ -64,7 +61,6 @@
             background-color: #0056b3;
         }
 
-        
         .content {
             padding: 30px;
             max-width: 900px;
@@ -81,7 +77,6 @@
             margin-bottom: 20px;
         }
 
-        
         form {
             display: flex;
             justify-content: center;
@@ -89,7 +84,8 @@
             margin-bottom: 20px;
         }
 
-        input[type="text"], select {
+        input[type="text"],
+        select {
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -111,7 +107,6 @@
             background-color: #0056b3;
         }
 
-        
         .get-task-btn {
             display: block;
             text-align: center;
@@ -129,25 +124,6 @@
             background-color: #218838;
         }
 
-        
-        ul.metrics {
-            list-style-type: none;
-            padding: 0;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-        }
-
-        ul.metrics li {
-            background: #e9ecef;
-            padding: 10px;
-            border-radius: 5px;
-            text-align: center;
-            flex: 1 1 45%;
-            margin: 5px;
-        }
-
-        
         .task-list {
             list-style: none;
             padding: 0;
@@ -196,7 +172,6 @@
             background: #28a745;
             color: #fff;
         }
-
     </style>
 </head>
 <body>
@@ -209,7 +184,18 @@
 
     <div class="nav-bar">
         <a href="{{ url_for('upload') }}">Upload</a>
-        <a href="{{ url_for('queue', queue_name='default') }}">Queues</a>
+        <a href="{{ url_for('queues') }}">Queues</a>
+        <!-- Only show admin dashboard link if user is an admin -->
+        {% if session.get('role') == 'admin' %}
+           <a href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a>
+        {% endif %}
+        <a href="{{ url_for('create_queue') }}">Create Queue</a>
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('manage_users') }}">Manage Users</a>
+        {% endif %}
+        {% if session.get('role') == 'user' %}
+        <a href="{{ url_for('update_password') }}">Change Password</a>
+        {% endif %}
     </div>
 
     <div class="content">
@@ -225,33 +211,41 @@
 
         <a href="{{ url_for('get_next_task', queue_name=queue_name) }}" class="get-task-btn">Get Next Task</a>
 
-        <ul class="metrics">
-            <li><strong>Backlog:</strong> {{ metrics.backlog }}</li>
-            <li><strong>Added in Last 24 Hours:</strong> {{ metrics.added_last_24h }}</li>
-            <li><strong>Completed in Last 24 Hours:</strong> {{ metrics.completed_last_24h }}</li>
-            <li><strong>Total Completed:</strong> {{ metrics.total_completed }}</li>
-            <li><strong>Average Throughput:</strong>Average Throughput: {{ metrics.average_throughput }}</li>
-        </ul>
 
         <h2>Tasks</h2>
         <ul class="task-list">
             {% for task in tasks %}
-            <!-- Only display if Status != 'Completed' -->
-            {% if task['Status'] != 'Completed' %}
-                <li>
-                    <!-- Link to the task detail page -->
-                    <a href="{{ url_for('task', queue_name=queue_name, task_id=loop.index0) }}">
-                        Task {{ loop.index0 }}: {{ task["Company Name"] if "Company Name" in task else "Unknown" }}
-                    </a>
-                    <span class="status-badge 
-                        {% if task['Status'] == 'Open' %} status-open 
-                        {% elif task['Status'] == 'In Progress' %} status-inprogress 
-                        {% else %} status-completed {% endif %}">
-                        {{ task['Status'] }}
-                    </span>
-                </li>
-            {% endif %}
-        {% endfor %}
+                <!-- Only display if Status != 'Completed' -->
+                {% if task['Status'] != 'Completed' %}
+                    <li>
+                        {% if queue_name == "Potential Duplicates" %}
+                            <!-- If queue is "Potential Duplicates", go to duplicates route -->
+                            <a href="{{ url_for('duplicates', queue_name=queue_name, task_id=loop.index0) }}">
+                                Task {{ loop.index0 }}:
+                                {{ task["A_NAME"] if "A_NAME" in task else "Unknown" }}
+                            </a>
+                        {% else %}
+                            <!-- Otherwise, normal task route -->
+                            <a href="{{ url_for('task', queue_name=queue_name, task_id=loop.index0) }}">
+                                Task {{ loop.index0 }}:
+                                {% if queue_name == "Incomplete Address" %}
+                                    {{ task["Company Name"] if "Company Name" in task else "Unknown" }}
+                                {% else %}
+                                    {{ task["Company Name"] if "Company Name" in task else "Unknown" }}
+                                {% endif %}
+                            </a>
+                        {% endif %}
+
+                        <!-- STATUS BADGE -->
+                        <span class="status-badge 
+                            {% if task['Status'] == 'Open' %} status-open 
+                            {% elif task['Status'] == 'In Progress' %} status-inprogress 
+                            {% else %} status-completed {% endif %}">
+                            {{ task['Status'] }}
+                        </span>
+                    </li>
+                {% endif %}
+            {% endfor %}
         </ul>
     </div>
 </body>

@@ -1,9 +1,4 @@
-CD Number,Company Name,Country Name,DUNS,locked_by,lock_timestamp,Status,Assigned To,Last Updated,Created Time,Completion Time
-22428,Rizhao Changhua Aquatic Foodstuff Company Limited,CN,,admin,2025-02-11 09:20:06.611306,Completed,,2025-02-11 08:53:18,2025-02-11 08:53:18,2025-02-11 09:20:25
-385045,"Zhejiang Shengda Bio-Pharm Co., Ltd.",CN,544882749.0,admin,2025-02-11 09:23:00.675210,Completed,,2025-02-11 08:53:18,2025-02-11 08:53:18,2025-02-11 09:23:05
-20198,Proyecta Corp. Ltda,CL,,admin,2025-02-11 09:40:55.085154,Completed,,2025-02-11 08:53:18,2025-02-11 08:53:18,2025-02-11 09:41:07
-659288,"Guangdong Jinhang Foods Co., Ltd.",CN,420813673.0,admin,2025-02-11 10:06:39.867185,Completed,,2025-02-11 08:53:18,2025-02-11 08:53:18,2025-02-11 10:06:51
-659288,"Guangdong Jinhang Foods Co., Ltd.",CN,4208136,admin,2025-02-11 10:10:31.850711,Open,nan,2025-02-11 08:53:18,2025-02-11 08:53:18,nan
-659288,"Guangdong Jinhang Foods Co., Ltd.",CN,4208136,admin,2025-02-11 10:15:25.793259,Completed,nan,2025-02-11 08:53:18,2025-02-11 08:53:18,2025-02-11 10:15:34
-659288,"Guangdong Jinhang Foods Co., Ltd.",CN,42081367377.0,admin,2025-02-11 15:06:18.481157,Completed,nan,2025-02-11 08:53:18,2025-02-11 08:53:18,2025-02-11 15:06:34
-659288,"Guangdong Jinhang Foods Co., Ltd.",CN,42081367377.0,admin,2025-02-11 15:10:54.919437,Completed,nan,2025-02-11 08:53:18,2025-02-11 08:53:18,2025-02-11 15:11:02
+CD Number,Company Name,Country Name,DUNS,Last Updated,Assigned To,Status,locked_by,lock_timestamp,Created Time,Completion Time
+20198,Proyecta Corp. Ltda,CL,009394845,2025-02-14 13:55:46,nan,Completed,admin,2025-02-14 14:00:59.943667,2025-02-14 13:55:46,2025-02-14 14:01:08
+659288,"Guangdong Jinhang Foods Co., Ltd.",CN,420813673,2025-02-14 15:04:33,nan,Completed,admin,2025-02-17 10:20:28.124691,2025-02-14 15:04:33,2025-02-17 10:20:33
+163759,Bahlsen GMBH & Co. Kg,DE,341575780,2025-02-14 15:04:33,nan,Completed,admin,2025-02-17 10:20:37.297896,2025-02-14 15:04:33,2025-02-17 10:20:43

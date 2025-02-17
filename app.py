@@ -451,8 +451,76 @@ def update_task(queue_name, task_id):
         if not os.path.exists('completed_records'):
             os.makedirs('completed_records')
         completed_file_path = os.path.join('completed_records', f'{queue_name}_completed_records.csv')
-        # Extract just this one row
-        completed_task = df.loc[[task_id]].copy()
+        completed_task = df.loc[[task_id]].copy()  # The row being completed
+        completed_task.to_csv(
+            completed_file_path,
+            mode='a',
+            header=not os.path.exists(completed_file_path),
+            index=False
+        )
+    df.to_csv(f'{queue_name}.csv', index=False) 
+    df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'), index=False)
+    # Remove the row from the active DataFrame
+    df.drop(task_id, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+
+    # Persist the queue to CSV
+    if len(df) > 0:
+        # If queue still has tasks
+        df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'), index=False)
+        work_queues[queue_name] = df
+    else:
+        # Queue is now empty => remove from memory & from disk
+        if os.path.exists(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv')):
+            os.remove(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'))
+        del work_queues[queue_name]
+    # Finally, redirect to the queue page (the completed task is now gone)
+    return redirect(url_for('queue', queue_name=queue_name))
+
+@app.route('/queue/<queue_name>/duplicates/<int:task_id>', methods=['GET', 'POST'])
+def duplicates(queue_name, task_id):
+    # Ensure queue exists
+    if queue_name not in work_queues:
+        return "Queue not found", 404
+
+    df = work_queues[queue_name].reset_index(drop=True)
+    # Validate task_id
+    if task_id < 0 or task_id >= len(df):
+        return "Record not found", 404
+    
+    work_queues[queue_name] = df
+    # Get the row in dictionary form
+    row = df.iloc[task_id].to_dict()
+
+    if request.method == 'POST':
+        # radio button name="survivor" => "A" or "B"
+        survivor_choice = request.form.get('survivor')
+
+        if not survivor_choice:
+            return "No survivor selected!", 400
+
+        # Mark the chosen one as survivor and the duplicate
+        if survivor_choice == 'A':
+            df.at[df.index[task_id], 'Survivor'] = df.at[df.index[task_id], 'A_ID']
+            df.at[df.index[task_id], 'Duplicate'] = df.at[df.index[task_id], 'B_ID']
+        else:
+            df.at[df.index[task_id], 'Survivor'] = df.at[df.index[task_id], 'B_ID']
+            df.at[df.index[task_id], 'Duplicate'] = df.at[df.index[task_id], 'A_ID']
+
+        # mark the row as 'Completed'
+        df.loc[task_id, 'Status'] = 'Completed'
+        now = datetime.now()
+        df.loc[task_id, 'Completion Time'] = now.strftime('%Y-%m-%d %H:%M:%S')
+        if df.loc[task_id, 'Status'] == 'Completed':
+            df.to_csv(f"{queue_name}.csv", index=False)
+        
+        # Write the completed row to a "completed duplicates" file
+        completed_task = df.iloc[[task_id]].copy()
+        completed_dir = 'completed_records'
+        if not os.path.exists(completed_dir):
+            os.makedirs(completed_dir)
+        completed_file_path = os.path.join(completed_dir, f'{queue_name}_completed_records.csv')
+
         completed_task.to_csv(
             completed_file_path,
             mode='a',
@@ -460,12 +528,31 @@ def update_task(queue_name, task_id):
             index=False
         )
 
-    df.to_csv(f'{queue_name}.csv', index=False)  # If you want to persist active queue as well
-    df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f'{queue_name}.csv'), index=False)
-    # Update the in-memory DataFrame
-    work_queues[queue_name] = df
-    # Finally, redirect to the queue page (the completed task is now gone)
-    return redirect(url_for('queue', queue_name=queue_name))
+        df.drop(task_id, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+
+        # (Optional) If queue is empty, remove it from memory & disk
+        if len(df) == 0:
+            queue_path = os.path.join(ACTIVE_QUEUES_FOLDER, f"{queue_name}.csv")
+            if os.path.exists(queue_path):
+                os.remove(queue_path)
+            del work_queues[queue_name]
+
+            if work_queues:
+                next_queue = sorted(work_queues.keys())[0]
+                return redirect(url_for('queue', queue_name=next_queue))
+            else:
+                return redirect(url_for('index'))
+        else:
+            # Save updated queue to ACTIVE_QUEUES_FOLDER
+            work_queues[queue_name] = df
+            df.to_csv(os.path.join(ACTIVE_QUEUES_FOLDER, f"{queue_name}.csv"), index=False)
+
+        # Redirect to the queue list or wherever you want
+        return redirect(url_for('queue', queue_name=queue_name))
+
+    # If GET request, render the duplicates template
+    return render_template('duplicates_record.html', queue_name=queue_name, task_id=task_id, row=row)
 
 @app.route('/admin/unlock/<queue_name>/<int:task_id>', methods=['POST'])
 def admin_unlock(queue_name, task_id):

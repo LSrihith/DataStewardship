@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Potential Duplicates</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container {
+            max-width: 600px; 
+            margin: auto; 
+            background: #fff; 
+            padding: 20px; 
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.1); 
+            border-radius: 8px;
+        }
+        h1 { color: #003366; text-align: center; }
+        .record { display: flex; justify-content: space-between; margin: 10px 0; }
+        .record div { flex: 1; margin: 0 10px; }
+        .record label { font-weight: bold; }
+        .radio-group { margin-top: 20px; text-align: center; }
+        .radio-group p { font-weight: bold; }
+        button {
+            padding: 10px 15px; 
+            background: #007bff; 
+            color: #fff; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin-top: 20px;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Potential Duplicates</h1>
+        <div class="record">
+            <div>
+                <label>A_ID:</label> {{ row['A_ID'] }}<br>
+                <label>A_NAME:</label> {{ row['A_NAME'] }}<br>
+                <label>A_MAILADDRESS1:</label> {{ row['A_MAILADDRESS1'] }}
+            </div>
+            <div>
+                <label>B_ID:</label> {{ row['B_ID'] }}<br>
+                <label>B_NAME:</label> {{ row['B_NAME'] }}<br>
+                <label>B_MAILADDRESS1:</label> {{ row['B_MAILADDRESS1'] }}
+            </div>
+        </div>
+
+        <form method="POST">
+            <div class="radio-group">
+                <p>Select the Survivor Record:</p>
+                <input type="radio" name="survivor" value="A" id="survivorA">
+                <label for="survivorA">Use A as Survivor</label><br>
+                <input type="radio" name="survivor" value="B" id="survivorB">
+                <label for="survivorB">Use B as Survivor</label>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</body>
+</html>
